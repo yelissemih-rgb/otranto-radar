@@ -167,7 +167,6 @@ else:
                     strlm.markdown("## 🚨 Otranto Gelişmiş Mali Denetim Müfettişi")
                     sekmeler = ["💵 Kasa Sınırı (7.000 TL)", "📅 10 Günlük Fatura Giriş İhlali", "🔄 Mükerrer Kayıt Radarı", "⚖️ Ters Bakiye Veren Hesaplar", "📊 Finansal Özetler & Rapor"]
                     tab1, tab2, tab3, tab4, tab5 = strlm.tabs(sekmeler)
-                    
                     with tab1:
                         strlm.subheader("🚨 7.000 TL Üzeri Nakit Kasa İşlemleri")
                         k_f = df['Hesap Kodu Str'].str.startswith('100')
@@ -175,7 +174,6 @@ else:
                         kasa_ihlali = df[k_f & t_f]
                         if not kasa_ihlali.empty:
                             strlm.dataframe(kasa_ihlali[['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç', 'Alacak']], use_container_width=True)
-                        else:
                         else:
                             strlm.success("✅ Harika! Limit aşan usulsüz nakit kasa işlemi yok.")
                             
@@ -237,4 +235,3 @@ else:
                 strlm.error(f"Sistem hatası: {e}")
         else:
             strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
-
