@@ -180,8 +180,7 @@ else:
                     
                     # --- SEKMELİ DENETİM EKRANI ---
                     strlm.markdown("## 🚨 Otranto Gelişmiş Mali Denetim Müfettişi")
-
-                    sekmeler = [
+                      sekmeler = [
                         "💵 Kasa Sınırı (7.000 TL)", 
                         "📅 10 Günlük Fatura Giriş İhlali", 
                         "🔄 Mükerrer Kayıt Radarı", 
