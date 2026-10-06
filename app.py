@@ -102,7 +102,7 @@ else:
                     mevcut_firmalar.append({"Firma Kodu": k, "Firma Adı": v["ad"], "Şifre": v["sifre"]})
             strlm.dataframe(pd.DataFrame(mevcut_firmalar), use_container_width=True)
 
-    # --- MODÜL B: 📊 FİRMA ANALİZ PANELİ (MÜŞTERI EKRANI) ---
+    # --- MODÜL B: 📊 FİRMA ANALİZ PANELİ (MÜŞTERİ EKRANI) ---
     else:
         yuklenen_dosya = strlm.file_uploader("Luca Yevmiye Defteri (Excel veya PDF formatında yükleyebilirsiniz):", type=["xlsx", "xls", "pdf"])
 
@@ -125,8 +125,8 @@ else:
                         if len(pdf_satirlar) > 5:
                             gecici_df = pd.DataFrame(pdf_satirlar)
                             df = pd.DataFrame()
-                            df['Tarih'] = gecici_df[0]
-                            df['Hesap Kodu'] = gecici_df[1]
+                            df['Tarih'] = gecici_df
+                            df['Hesap Kodu'] = gecici_df
                             df['Açıklama'] = gecici_df.iloc[:, 2:-2].apply(lambda x: ' '.join(x.dropna().astype(str)), axis=1)
                             df['Borç'] = gecici_df.iloc[:, -2]
                             df['Alacak'] = gecici_df.iloc[:, -1]
@@ -142,7 +142,7 @@ else:
                                             if any(s):
                                                 yedek_satirlar.append(s)
                             if len(yedek_satirlar) > 1:
-                                df = pd.DataFrame(yedek_satirlar[1:], columns=yedek_satirlar[0])
+                                df = pd.DataFrame(yedek_satirlar[1:], columns=yedek_satirlar)
                 else:
                     df = pd.read_excel(yuklenen_dosya)
                 
@@ -186,54 +186,97 @@ else:
                             strlm.dataframe(kasa_ihlali[['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç', 'Alacak']], use_container_width=True)
                         else:
                             strlm.success("✅ Harika! 7.000 TL limitini aşan usulsüz nakit kasa işlemi bulunamadı.")
-with tab2:
-strlm.subheader("📅 10 Günlük Yasal Fatura Kayıt Süresi İhlali")
-strlm.info("Kanunen faturalar kesildikten sonra 10 gün içinde işlenmelidir. Aşağıdaki kayıtlar yasal süreyi aşmıştır:")
-df['Gecikme_Gun'] = (df['Tarih'] - df['Evrak Tarihi']).dt.days
-gecikmeli_faturalar = df[df['Gecikme_Gun'] > 10]
-if not gecikmeli_faturalar.empty:
-strlm.warning(f"⚠️ Toplam {len(gecikmeli_faturalar)} işlemde yasal 10 günlük kayıt süresi aşılmış!")
-strlm.dataframe(gecikmeli_faturalar[['Tarih', 'Evrak Tarihi', 'Gecikme_Gun', 'Hesap Kodu', 'Açıklama', 'Borç']], use_container_width=True)
-else:
-strlm.success("✅ Mükemmel! Tüm faturalar yasal 10 günlük süre içinde zamanında işlenmiş.")
-with tab3:
-strlm.subheader("🔄 Mükerrer (Çift Girilen Fatura) Şüphesi")
-mukerrer = df[df.duplicated(subset=['Tarih', 'Hesap Kodu', 'Borç', 'Alacak'], keep=False) & ((df['Borç'] > 0) | (df['Alacak'] > 0))]
-if not mukerrer.empty:
-strlm.dataframe(mukerrer[['Tarih', 'Hesap Kodu', 'Borç', 'Alacak']].sort_values(by='Tarih'), use_container_width=True)
-else:
-strlm.success("✅ Temiz! Aynı gün çift girildiğinden şüphelenilen kayıt saptanmadı.")
-with tab4:
-strlm.subheader("⚖️ Aktif Karakterli Hesap Kontrolü")
-ters_durumlar = []
-for h_kod in ['100', '102']:
-h_df = df[df['Hesap Kodu Str'].str.startswith(h_kod)]
-top_b = h_df['Borç'].sum()
-top_a = h_df['Alacak'].sum()
-if top_a > top_b:
-ters_durumlar.append({"Hesap Kodu": h_kod, "Toplam Giriş (Borç)": top_b, "Toplam Çıkış (Alacak)": top_a, "Durum": "Eksi Bakiye (Hatalı)"})
-if ters_durumlar:
-strlm.dataframe(pd.DataFrame(ters_durumlar), use_container_width=True)
-else:
-strlm.success("✅ Doğru! Kasa ve Banka hesapları aritmetik olarak eksiye düşmemiştir.")
-with tab5:
-strlm.subheader("📈 Şirket Finansal Nakit Akışı")
-nakit_df = df[df['Hesap Kodu Str'].str.startswith(('100', '102'))].copy()
-if not nakit_df.empty:
-nakit_df['Ay'] = nakit_df['Tarih'].dt.to_period('M').astype(str)
-nakit_ozet = nakit_df.groupby('Ay')[['Borç', 'Alacak']].sum().reset_index()
-fig = px.bar(nakit_ozet, x='Ay', y=['Borç', 'Alacak'], barmode='group', color_discrete_sequence=['#328CC1', '#0B3C5D'])
-strlm.plotly_chart(fig, use_container_width=True)
-strlm.markdown("### 🔮 KDV Öngörü Sonucu")
-indirilecek_kdv = df[df['Hesap Kodu Str'].str.startswith('191')]['Borç'].sum()
-hesaplanan_kdv = df[df['Hesap Kodu Str'].str.startswith('391')]['Alacak'].sum()
-strlm.metric("Net KDV Durumu (Eksi ise Devir, Artı ise Ödeme)", f"{hesaplanan_kdv - indirilecek_kdv:,.2f} TL")
-# EXCEL RAPOR İNDİRME
-output = io.BytesIO()
-with pd.ExcelWriter(output, engine='openpyxl') as writer:
-df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
-strlm.download_button(label="📥 Denetim Raporunu Bilgisayara İndir (.xlsx)", data=output.getvalue(), file_name="Otranto_Mali_Denetim.xlsx", use_container_width=True)
-except Exception as e:
-strlm.error(f"Sistem hatası: {e}")
-else:
-strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
+                    # --- GELECEK SEKMELİ DENETİM EKRANI ---
+                    strlm.markdown("## 🚨 Otranto Gelişmiş Mali Denetim Müfettişi")
+                    
+                    sekmeler = [
+                        "💵 Kasa Sınırı (7.000 TL)", 
+                        "📅 10 Günlük Fatura Giriş İhlali",
+                        "🔄 Mükerrer Kayıt Radarı", 
+                        "⚖️ Ters Bakiye Veren Hesaplar",
+                        "📊 Finansal Özetler & Rapor"
+                    ]
+                    tab1, tab2, tab3, tab4, tab5 = strlm.tabs(sekmeler)
+                    
+                    with tab1:
+                        strlm.subheader("🚨 7.000 TL Üzeri Nakit Kasa İşlemleri")
+                        k_filtre = df['Hesap Kodu Str'].str.startswith('100')
+                        t_filtre = (df['Borç'] >= 7000) | (df['Alacak'] >= 7000)
+                        kasa_ihlali = df[k_filtre & t_filtre]
+                        if not kasa_ihlali.empty:
+                            goster_cols = ['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç', 'Alacak']
+                            strlm.dataframe(kasa_ihlali[goster_cols], use_container_width=True)
+                        else:
+                            strlm.success("✅ Harika! Limit aşan usulsüz nakit kasa işlemi yok.")
+                            
+                    with tab2:
+                        strlm.subheader("📅 10 Günlük Yasal Fatura Kayıt Süresi İhlali")
+                        strlm.info("Kanunen faturalar kesildikten sonra 10 gün içinde işlenmelidir.")
+                        df['Gecikme_Gun'] = (df['Tarih'] - df['Evrak Tarihi']).dt.days
+                        gecikmeli_faturalar = df[df['Gecikme_Gun'] > 10]
+                        if not gecikmeli_faturalar.empty:
+                            strlm.warning(f"⚠️ Toplam {len(gecikmeli_faturalar)} işlemde yasal süre aşılmış!")
+                            g_cols = ['Tarih', 'Evrak Tarihi', 'Gecikme_Gun', 'Hesap Kodu', 'Açıklama', 'Borç']
+                            strlm.dataframe(gecikmeli_faturalar[g_cols], use_container_width=True)
+                        else:
+                            strlm.success("✅ Mükemmel! Tüm faturalar yasal 10 günlük süre içinde işlenmiş.")
+                            
+                    with tab3:
+                        strlm.subheader("🔄 Mükerrer (Çift Girilen Fatura) Şüphesi")
+                        m_kriter = ['Tarih', 'Hesap Kodu', 'Borç', 'Alacak']
+                        m_tutar = (df['Borç'] > 0) | (df['Alacak'] > 0)
+                        mukerrer = df[df.duplicated(subset=m_kriter, keep=False) & m_tutar]
+                        if not mukerrer.empty:
+                            strlm.dataframe(mukerrer[m_kriter].sort_values(by='Tarih'), use_container_width=True)
+                        else:
+                            strlm.success("✅ Temiz! Aynı gün çift girilen mükerrer kayıt saptanmadı.")
+                            
+                    with tab4:
+                        strlm.subheader("⚖️ Aktif Karakterli Hesap Kontrolü")
+                        ters_durumlar = []
+                        for h_kod in ['100', '102']:
+                            h_df = df[df['Hesap Kodu Str'].str.startswith(h_kod)]
+                            top_b = h_df['Borç'].sum()
+                            top_a = h_df['Alacak'].sum()
+                            if top_a > top_b:
+                                ters_durumlar.append({
+                                    "Hesap Kodu": h_kod, 
+                                    "Toplam Giriş (Borç)": top_b, 
+                                    "Toplam Çıkış (Alacak)": top_a, 
+                                    "Durum": "Eksi Bakiye (Hatalı)"
+                                })
+                        if ters_durumlar:
+                            strlm.dataframe(pd.DataFrame(ters_durumlar), use_container_width=True)
+                        else:
+                            strlm.success("✅ Doğru! Kasa ve Banka hesapları eksiye düşmemiştir.")
+                            
+                    with tab5:
+                        strlm.subheader("📈 Şirket Finansal Nakit Akışı")
+                        nakit_df = df[df['Hesap Kodu Str'].str.startswith(('100', '102'))].copy()
+                        if not nakit_df.empty:
+                            nakit_df['Ay'] = nakit_df['Tarih'].dt.to_period('M').astype(str)
+                            nakit_ozet = nakit_df.groupby('Ay')[['Borç', 'Alacak']].sum().reset_index()
+                            fig = px.bar(nakit_ozet, x='Ay', y=['Borç', 'Alacak'], barmode='group',
+                                         color_discrete_sequence=['#328CC1', '#0B3C5D'])
+                            strlm.plotly_chart(fig, use_container_width=True)
+
+                        strlm.markdown("### 🔮 KDV Öngörü Sonucu")
+                        i_kdv = df[df['Hesap Kodu Str'].str.startswith('191')]['Borç'].sum()
+                        h_kdv = df[df['Hesap Kodu Str'].str.startswith('391')]['Alacak'].sum()
+                        strlm.metric("Net KDV Durumu (Eksi ise Devir, Artı ise Ödeme)", f"{h_kdv - i_kdv:,.2f} TL")
+                        
+                        # EXCEL RAPOR İNDİRME
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
+                        strlm.download_button(
+                            label="📥 Denetim Raporunu Bilgisayara İndir (.xlsx)", 
+                            data=output.getvalue(), 
+                            file_name="Otranto_Mali_Denetim.xlsx", 
+                            use_container_width=True
+                        )
+
+            except Exception as e:
+                strlm.error(f"Sistem hatası: {e}")
+        else:
+            strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
