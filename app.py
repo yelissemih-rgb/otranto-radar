@@ -217,7 +217,7 @@ strlm.dataframe(pd.DataFrame(ters_durumlar), use_container_width=True)
 else:
 strlm.success("✅ Doğru! Kasa ve Banka hesapları aritmetik olarak eksiye düşmemiştir.")
 with tab5:
-strlm.subheader("📈 Şiriket Finansal Nakit Akışı")
+strlm.subheader("📈 Şirket Finansal Nakit Akışı")
 nakit_df = df[df['Hesap Kodu Str'].str.startswith(('100', '102'))].copy()
 if not nakit_df.empty:
 nakit_df['Ay'] = nakit_df['Tarih'].dt.to_period('M').astype(str)
