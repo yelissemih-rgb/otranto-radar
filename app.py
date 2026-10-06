@@ -294,3 +294,13 @@ else:
                         
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
+                            strlm.download_button(
+                            label="📥 Genişletilmiş Denetim Raporunu İndir (.xlsx)", 
+                            data=output.getvalue(), 
+                            file_name="Otranto_Uyum_Raporu.xlsx", 
+                            use_container_width=True
+                        )
+            except Exception as e:
+                strlm.error(f"Sistem güvenli modda çalıştırılamadı. Detay: {e}")
+        else:
+            strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
