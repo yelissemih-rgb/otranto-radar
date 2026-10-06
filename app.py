@@ -175,7 +175,7 @@ else:
                     if 'Evrak Tarihi' not in df.columns:
                         df['Evrak Tarihi'] = df['Tarih']
                     
-                                       for col in ['Borç', 'Alacak']:
+                        for col in ['Borç', 'Alacak']:
                         if col in df.columns:
                             df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
                             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
