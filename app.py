@@ -3,11 +3,12 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 import io
+import pdfplumber
+import re
 
 # 1. OTRANTO TEMA VE SAYFA AYARLARI
 strlm.set_page_config(page_title="Otranto Finansal Radar", layout="wide", page_icon="🔷")
 
-# Kurumsal Mavi Stil Özelleştirmesi
 mavi_stil = """
 <style>
     .stApp { background-color: #F9FBFC; }
@@ -23,7 +24,6 @@ mavi_stil = """
 """
 strlm.markdown(mavi_stil, unsafe_allow_html=True)
 
-# Gelişmiş Dinamik Kullanıcı Yönetimi (Oturum Hafızası)
 if "kullanici_veri_tabani" not in strlm.session_state:
     strlm.session_state["kullanici_veri_tabani"] = {
         "admin": {"sifre": "otrantoadmin2026", "ad": "Sistem Yöneticisi (Otranto)"},
@@ -36,143 +36,146 @@ if "giris_yapildi" not in strlm.session_state:
     strlm.session_state["aktif_kullanici"] = ""
     strlm.session_state["firma_adi"] = ""
 
-# 2. OTRANTO GİRİŞ EKRANI
+# 2. GİRİŞ EKRANI
 if not strlm.session_state["giris_yapildi"]:
-    strlm.markdown("<br><br>", unsafe_allow_html=True)
-    strlm.markdown("<h1 style='text-align: center; font-size: 3rem; letter-spacing: 2px;'>🔷 OTRANTO</h1>", unsafe_allow_html=True)
+    strlm.markdown("<br><br><h1 style='text-align: center; font-size: 3rem;'>🔷 OTRANTO</h1>", unsafe_allow_html=True)
     strlm.markdown("<h3 style='text-align: center; color: #328CC1 !important;'>Akıllı Finansal Analiz & Denetim Platformu</h3>", unsafe_allow_html=True)
     
-    col1, col2, col3 = strlm.columns([1, 2, 1])
+    col1, col2, col3 = strlm.columns(3)
     with col2:
-        strlm.markdown("<div style='background-color: white; padding: 30px; border-radius: 15px; box-shadow: 0px 4px 20px rgba(0,0,0,0.05);'>", unsafe_allow_html=True)
         kullanici_adi = strlm.text_input("Kullanıcı Adı / Firma Kodu").strip()
         sifre = strlm.text_input("Şifre", type="password").strip()
-        giris_butonu = strlm.button("Güvenli Giriş Yap", use_container_width=True)
-        strlm.markdown("</div>", unsafe_allow_html=True)
-        
-        if giris_butonu:
+        if strlm.button("Güvenli Giriş Yap", use_container_width=True):
             db = strlm.session_state["kullanici_veri_tabani"]
             if kullanici_adi in db and db[kullanici_adi]["sifre"] == sifre:
                 strlm.session_state["giris_yapildi"] = True
                 strlm.session_state["aktif_kullanici"] = kullanici_adi
                 strlm.session_state["firma_adi"] = db[kullanici_adi]["ad"]
                 strlm.rerun()
-            else:
-                strlm.error("❌ Hatalı kullanıcı adı veya şifre girdiniz!")
-
-# 3. GİRİŞ BAŞARILIYSA ÇALIŞACAK ALAN
+            else: strlm.error("❌ Hatalı giriş!")
 else:
-    # Üst Navigasyon ve Çıkış Butonu
     ust_col1, ust_col2 = strlm.columns(2)
-    with ust_col1:
-        strlm.markdown(f"<h1>🔷 OTRANTO <span style='color:#328CC1; font-size:1.5rem;'>| {strlm.session_state['firma_adi']}</span></h1>", unsafe_allow_html=True)
+    with ust_col1: strlm.markdown(f"<h1>🔷 OTRANTO | {strlm.session_state['firma_adi']}</h1>", unsafe_allow_html=True)
     with ust_col2:
         strlm.markdown("<br>", unsafe_allow_html=True)
         if strlm.button("🚪 Oturumu Kapat", use_container_width=True):
             strlm.session_state["giris_yapildi"] = False
-            strlm.session_state["aktif_kullanici"] = ""
-            strlm.session_state["firma_adi"] = ""
             strlm.rerun()
 
     strlm.markdown("<hr style='border: 1px solid #0B3C5D;'>", unsafe_allow_html=True)
 
-    # --- MODÜL A: 👑 YÖNETİCİ (ADMIN) PANELİ ---
+    # ADMIN PANELİ
     if strlm.session_state["aktif_kullanici"] == "admin":
         strlm.subheader("🛠️ Otranto Üye Firma Yönetim Paneli")
-        strlm.markdown("Sistemi kullanan yeni firmaları buradan ekleyebilir veya şifrelerini yönetebilirsiniz.")
-        
         adm_col1, adm_col2 = strlm.columns(2)
         with adm_col1:
-            strlm.markdown("### Yeni Müşteri/Firma Tanımla")
-            yeni_kod = strlm.text_input("Yeni Firma Giriş Kodu (Örn: firma3)")
-            yeni_ad = strlm.text_input("Firma Resmi Unvanı (Örn: Öztürk İnşaat A.Ş.)")
-            yeni_sifre = strlm.text_input("Firma Giriş Şifresi")
-            
+            yeni_kod = strlm.text_input("Yeni Firma Giriş Kodu")
+            yeni_ad = strlm.text_input("Firma Resmi Unvanı")
+            yeni_sifre = strlm.text_input("Firma Şifresi")
             if strlm.button("➕ Firmayı Sisteme Kaydet", use_container_width=True):
-                if yeni_kod and yeni_ad and yeni_sifre:
-                    strlm.session_state["kullanici_veri_tabani"][yeni_kod] = {"sifre": yeni_sifre, "ad": yeni_ad}
-                    strlm.success(f"🎉 {yeni_ad} başarıyla sisteme eklendi! Artık kendi şifresiyle giriş yapabilir.")
-                else:
-                    strlm.warning("Lütfen tüm alanları doldurun.")
-                    
+                strlm.session_state["kullanici_veri_tabani"][yeni_kod] = {"sifre": yeni_sifre, "ad": yeni_ad}
+                strlm.success("Firma Kaydedildi!")
         with adm_col2:
-            strlm.markdown("### Kayıtlı Aktif Firmalar")
-            mevcut_firmalar = []
-            for k, v in strlm.session_state["kullanici_veri_tabani"].items():
-                if k != "admin":
-                    mevcut_firmalar.append({"Firma Kodu": k, "Firma Adı": v["ad"], "Şifre": v["sifre"]})
-            strlm.dataframe(pd.DataFrame(mevcut_firmalar), use_container_width=True)
+            mevcut = [{"Kod": k, "Unvan": v["ad"]} for k, v in strlm.session_state["kullanici_veri_tabani"].items() if k != "admin"]
+            strlm.dataframe(pd.DataFrame(mevcut), use_container_width=True)
 
-    # --- MODÜL B: 📊 FİRMA ANALİZ PANELİ (MÜŞTERİ EKRANI) ---
+    # MÜŞTERİ PANELİ
     else:
-        yuklenen_dosya = strlm.file_uploader("Luca'dan indirdiğiniz Yevmiye Defteri Excel dosyasını buraya yükleyin:", type=["xlsx", "xls"])
+        yuklenen_dosya = strlm.file_uploader("Luca Yevmiye Defteri (Excel veya PDF formatında yükleyebilirsiniz):", type=["xlsx", "xls", "pdf"])
 
         if yuklenen_dosya is not None:
+            df = None
             try:
-                df = pd.read_excel(yuklenen_dosya)
-                df.columns = df.columns.str.strip()
+                # EĞER PDF YÜKLENDİYSE (Yapay Zeka Metin Ayıklama Motoru)
+                if yuklenen_dosya.name.endswith('.pdf'):
+                    with strlm.spinner("🔮 Otranto PDF Tabloları Ayıklanıyor, Lütfen Bekleyin..."):
+                        pdf_satirlar = []
+                        with pdfplumber.open(yuklenen_dosya) as pdf:
+                            for sayfa in pdf.pages:
+                                tablo = sayfa.extract_table()
+                                if tablo:
+                                    for satir in tablo:
+                                        # Boş olmayan satırları filtrele
+                                        if any(satir):
+                                            pdf_satirlar.append(satir)
+                        
+                        if len(pdf_satirlar) > 1:
+                            # İlk satırı başlık yap, veriyi dataframe'e dönüştür
+                            df = pd.DataFrame(pdf_satirlar[1:], columns=pdf_satirlar[0])
+                        else:
+                            strlm.error("PDF içinden tablo verisi okunamadı. Lütfen taranmış (resim) PDF olmadığından emin olun.")
                 
-                # 2026 Filtreleme
-                df['Tarih'] = pd.to_datetime(df['Tarih'], errors='coerce', dayfirst=True)
-                df = df[df['Tarih'] >= '2026-01-01']
-                df['Hesap Kodu Str'] = df['Hesap Kodu'].astype(str).str.strip()
-                
-                strlm.success(f"📊 Otranto Analiz Motoru Aktif: {len(df)} satır veri inceleniyor.")
-                
-                # NAKİT AKIŞI
-                strlm.markdown("## 1. 📈 Nakit Akışı & Sıcak Para Hareketi")
-                nakit_df = df[df['Hesap Kodu Str'].str.startswith(('100', '102'))].copy()
-                if not nakit_df.empty:
-                    nakit_df['Ay'] = nakit_df['Tarih'].dt.to_period('M').astype(str)
-                    nakit_ozet = nakit_df.groupby('Ay')[['Borç', 'Alacak']].sum().reset_index()
-                    fig_nakit = px.bar(nakit_ozet, x='Ay', y=['Borç', 'Alacak'], barmode='group',
-                                       title="Aylık Sıcak Para Giriş/Çıkış Dengesi",
-                                       color_discrete_sequence=['#328CC1', '#0B3C5D'])
-                    strlm.plotly_chart(fig_nakit, use_container_width=True)
-
-                # KDV ÖNGÖRÜSÜ
-                strlm.markdown("## 2. 🔮 KDV Öngörü Modülü")
-                indirilecek_kdv = df[df['Hesap Kodu Str'].str.startswith('191')]['Borç'].sum()
-                hesaplanan_kdv = df[df['Hesap Kodu Str'].str.startswith('391')]['Alacak'].sum()
-                kdv_fark = hesaplanan_kdv - indirilecek_kdv
-                
-                kdv_col1, kdv_col2, kdv_col3 = strlm.columns(3)
-                kdv_col1.metric("191 - İndirilecek KDV", f"{indirilecek_kdv:,.2f} TL")
-                kdv_col2.metric("391 - Hesaplanan KDV", f"{hesaplanan_kdv:,.2f} TL")
-                if kdv_fark > 0:
-                    kdv_col3.metric("🚨 Tahmini Ödenecek KDV", f"{kdv_fark:,.2f} TL", delta="-Ödeme")
+                # EĞER EXCEL YÜKLENDİYSE
                 else:
-                    kdv_col3.metric("✅ Devreden KDV", f"{abs(kdv_fark):,.2f} TL", delta="+Devir")
+                    df = pd.read_excel(yuklenen_dosya)
+                
+                if df is not None:
+                    # Sütunları temizleme ve standartlaştırma
+                    df.columns = df.columns.str.strip()
+                    
+                    # Luca PDF çıktılarındaki olası farklı başlık isimlerini eşitleme
+                    kolon_esleme = {
+                        'Borç': 'Borç', 'Alacak': 'Alacak', 'Tarih': 'Tarih', 
+                        'Hesap Kodu': 'Hesap Kodu', 'Hesap Adı': 'Hesap Adı', 'Açıklama': 'Açıklama'
+                    }
+                    df.rename(columns=kolon_esleme, inplace=True)
+                    
+                    # Sayısal alanları temizleme (PDF'ten gelen virgüllü sayıları düzeltir)
+                    for col in ['Borç', 'Alacak']:
+                        if col in df.columns:
+                            df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+                            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                    
+                    # Tarih Filtreleme (2026 sonrası)
+                    if 'Tarih' in df.columns:
+                        df['Tarih'] = pd.to_datetime(df['Tarih'], errors='coerce', dayfirst=True)
+                        df = df[df['Tarih'] >= '2026-01-01']
+                    
+                    strlm.success(f"📊 Otranto Analiz Motoru Başarıyla Tamamlandı: {len(df)} satır finansal veri işlendi.")
+                    
+                    if 'Hesap Kodu' in df.columns:
+                        df['Hesap Kodu Str'] = df['Hesap Kodu'].astype(str).str.strip()
+                        
+                        # 1. NAKİT AKIŞI
+                        strlm.markdown("## 1. 📈 Nakit Akışı & Sıcak Para Hareketi")
+                        nakit_df = df[df['Hesap Kodu Str'].str.startswith(('100', '102'))].copy()
+                        if not nakit_df.empty and 'Tarih' in df.columns:
+                            nakit_df['Ay'] = nakit_df['Tarih'].dt.to_period('M').astype(str)
+                            nakit_ozet = nakit_df.groupby('Ay')[['Borç', 'Alacak']].sum().reset_index()
+                            fig = px.bar(nakit_ozet, x='Ay', y=['Borç', 'Alacak'], barmode='group',
+                                               title="Aylık Sıcak Para Giriş/Çıkış Dengesi (Mavi: Giriş, Koyu: Çıkış)",
+                                               color_discrete_sequence=['#328CC1', '#0B3C5D'])
+                            strlm.plotly_chart(fig, use_container_width=True)
 
-                # HATALI FİŞ RADARI
-                strlm.markdown("## 3. 🚨 Hatalı / Kayıp Fiş Radarı")
-                df['Açıklama'] = df['Açıklama'].astype(str).str.lower()
-                kayip_evrak = df[df['Açıklama'].str.contains('fat|ft|makbuz') & (df['Evrak No'].isna() | (df['Evrak No'] == ''))]
-                strlm.dataframe(kayip_evrak[['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç', 'Alacak']].head(20), use_container_width=True)
+                        # 2. KDV ÖNGÖRÜSÜ
+                        strlm.markdown("## 2. 🔮 KDV Öngörü Modülü")
+                        indirilecek_kdv = df[df['Hesap Kodu Str'].str.startswith('191')]['Borç'].sum()
+                        hesaplanan_kdv = df[df['Hesap Kodu Str'].str.startswith('391')]['Alacak'].sum()
+                        kdv_fark = hesaplanan_kdv - indirilecek_kdv
+                        
+                        kdv_col1, kdv_col2, kdv_col3 = strlm.columns(3)
+                        kdv_col1.metric("191 - İndirilecek KDV", f"{indirilecek_kdv:,.2f} TL")
+                        kdv_col2.metric("391 - Hesaplanan KDV", f"{hesaplanan_kdv:,.2f} TL")
+                        if kdv_fark > 0:
+                            kdv_col3.metric("🚨 Tahmini Ödenecek KDV", f"{kdv_fark:,.2f} TL", delta="-Ödeme Var")
+                        else:
+                            kdv_col3.metric("✅ Devreden KDV", f"{abs(kdv_fark):,.2f} TL", delta="+Devir Var")
 
-                # --- 📥 MODÜL C: EXCEL RAPOR İNDİRME ---
-                strlm.markdown("## 📥 Otranto Yönetici Finansal Raporunu İndir")
-                
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    kdv_data = pd.DataFrame({
-                        "Rapor Kalemi": ["191 - İndirilecek KDV Total", "391 - Hesaplanan KDV Total", "Net KDV Durumu"],
-                        "Tutar (TL)": [indirilecek_kdv, hesaplanan_kdv, kdv_fark]
-                    })
-                    kdv_data.to_excel(writer, sheet_name='KDV Ozet Raporu', index=False)
-                    kayip_evrak.to_excel(writer, sheet_name='Tespit Edilen Hatalı Fişler', index=False)
-                
-                excel_data = output.getvalue()
-                
-                strlm.download_button(
-                    label="📥 Yönetici Finans Analiz Raporunu İndir (.xlsx)",
-                    data=excel_data,
-                    file_name=f"Otranto_Finans_Raporu_{datetime.now().strftime('%d_%m_%Y')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
+                        # 3. HATALI FİŞ RADARI
+                        strlm.markdown("## 3. 🚨 Hatalı / Kayıp Fiş Radarı")
+                        if 'Açıklama' in df.columns:
+                            df['Açıklama'] = df['Açıklama'].astype(str).str.lower()
+                            evrak_col = 'Evrak No' if 'Evrak No' in df.columns else df.columns[0] # Yedek kolonu bul
+                            kayip_evrak = df[df['Açıklama'].str.contains('fat|ft|makbuz') & (df[evrak_col].isna() | (df[evrak_col] == ''))]
+                            strlm.dataframe(kayip_evrak[['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç', 'Alacak']].head(20), use_container_width=True)
+
+                        # EXCEL RAPOR İNDİRME
+                        strlm.markdown("## 📥 Raporu Bilgisayara İndir")
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            df.head(1000).to_excel(writer, sheet_name='Otranto Finans Raporu', index=False)
+                        excel_data = output.getvalue()
+                        strlm.download_button(label="📥 Yönetici Finans Analiz Raporunu İndir (.xlsx)", data=excel_data, file_name="Otranto_Analiz.xlsx", use_container_width=True)
 
             except Exception as e:
-                strlm.error(f"Dosya işlenirken sistem hatası oluştu: {e}")
-        else:
-            strlm.info("🔷 Otranto sistemine erişiminiz onaylandı. Lütfen analizi başlatmak için Luca Yevmiye Defterinizi yükleyin.")
+
