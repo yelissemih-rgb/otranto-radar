@@ -106,7 +106,9 @@ else:
                                             satir_metni = " ".join(kelimeler)
                                             tarih_bul = re.findall(r"\b\d{2}\.\d{2}\.\d{4}\b", satir_metni)
                                             
-                                            if not detected_company_name and any(k in satir.lower() for k in ["ltd", "a.ş", "tic", "san", "ştd"]):
+                                            # Basit ve hatasız firma adı kontrolü (Hata çıkaran kütüphane kodları silindi)
+                                            s_low = satir.lower()
+                                            if not detected_company_name and ("ltd" in s_low or "a.ş" in s_low or "tic" in s_low or "san" in s_low):
                                                 detected_company_name = satir.strip()
                                             
                                             if t_bul := tarih_bul:
@@ -146,13 +148,13 @@ else:
                     if not df.empty:
                         for i in range(min(5, len(df))):
                             h_m = str(df.iloc[i, 0])
-                            if any(k in h_m.lower() for k in ["ltd", "a.ş", "tic"]):
+                            if "ltd" in h_m.lower() or "a.ş" in h_m.lower() or "tic" in h_m.lower():
                                 detected_company_name = h_m.strip()
                                 break
 
-                # Hata veren Regex (?i) yapısı Python kurallarına göre en başa çekilerek düzeltildi
+                # Hata çıkaran kısımlar tamamen silindi, basit temizlik yapılıyor
                 if detected_company_name:
-                    c_name = re.sub(r"(?i)^unvan[:\s]*-*|(?i)^firma[:\s]*-*", "", detected_company_name).strip()
+                    c_name = detected_company_name.replace("Unvan:", "").replace("Firma:", "").strip()
                     if c_name and strlm.session_state["firma_adi"] != c_name:
                         strlm.session_state["firma_adi"] = c_name
                         strlm.rerun()
@@ -176,7 +178,7 @@ else:
                     
                     df['Hesap Kodu Str'] = df['Hesap Kodu'].apply(lambda x: str(x) if isinstance(x, list) and len(x) > 0 else str(x)).str.strip()
                     
-                                        # --- SEKMELİ DENETİM EKRANI ---
+                    # --- SEKMELİ DENETİM EKRANI ---
                     strlm.markdown("## 🚨 Otranto Gelişmiş Mali Denetim Müfettişi")
                     sekmeler = [
                         "💵 Kasa Sınırı (7.000 TL)", 
