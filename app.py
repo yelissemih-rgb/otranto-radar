@@ -176,7 +176,7 @@ else:
                         t_f = (df['Borç'] >= 7000) | (df['Alacak'] >= 7000)
                         kasa_ihlali = df[k_f & t_f]
                         if not kasa_ihlali.empty:
-strlm.error(f"⚠️ Kanuni 7.000 TL Nakit Sınırını Aşan {len(kasa_ihlali)} İşlem Saptandı!")
+                            strlm.error(f"⚠️ Kanuni 7.000 TL Nakit Sınırını Aşan {len(kasa_ihlali)} İşlem Saptandı!")
                             strlm.dataframe(kasa_ihlali[['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç']], use_container_width=True)
                         else:
                             strlm.success("✅ Harika! Limit aşan usulsüz nakit kasa işlemi saptanmadı.")
