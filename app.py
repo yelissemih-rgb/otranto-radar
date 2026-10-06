@@ -142,15 +142,20 @@ else:
                     yeni_df['Evrak Tarihi'] = yeni_df['Tarih']
                     df = yeni_df
                     
+                    # 🚀 SAYI TEMİZLEME ROBOTU: Nokta, virgül ve görünmez boşlukları kesin olarak temizler
                     for col in ['Borç', 'Alacak']:
-                        df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+                        df[col] = df[col].astype(str).str.replace(' ', '', regex=False)
+                        # Binlik ayırıcı olan noktaları kaldır, virgüle çevrilmiş olanları noktaya çek
+                        df[col] = df[col].apply(lambda x: x.replace('.', '').replace(',', '.') if ',' in x and '.' in x else x)
+                        df[col] = df[col].apply(lambda x: x.replace('.', '') if '.' in x and ',' not in x and len(x.split('.')[-1]) == 2 else x)
+                        df[col] = df[col].str.replace(',', '.', regex=False)
                         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
                     
                     df['Tarih'] = pd.to_datetime(df['Tarih'], errors='coerce', dayfirst=True)
                     df = df.dropna(subset=['Tarih'])
                     df['Evrak Tarihi'] = pd.to_datetime(df['Evrak Tarihi'], errors='coerce', dayfirst=True).fillna(df['Tarih'])
                     
-                    # 🚀 RADİKAL ÇÖZÜM: Muavin hesap kodlarını (Örn: 100.01 -> 100) saf 3 haneli metne temizliyoruz
+                    # Muavin kırılımları temizleme (Örn: 100.01 -> 100)
                     df['Hesap Kodu Str'] = df['Hesap Kodu'].astype(str).str.replace('.', '', regex=False).str.replace(' ', '', regex=False).str.strip().str.slice(0, 3)
                     
                     strlm.success(f"📊 Otranto Finansal Yapay Zeka Denetim Motoru Aktif.")
@@ -171,7 +176,7 @@ else:
                         t_f = (df['Borç'] >= 7000) | (df['Alacak'] >= 7000)
                         kasa_ihlali = df[k_f & t_f]
                         if not kasa_ihlali.empty:
-                            strlm.error(f"⚠️ Kanuni 7.000 TL Nakit Sınırını Aşan {len(kasa_ihlali)} İşlem Saptandı!")
+strlm.error(f"⚠️ Kanuni 7.000 TL Nakit Sınırını Aşan {len(kasa_ihlali)} İşlem Saptandı!")
                             strlm.dataframe(kasa_ihlali[['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç']], use_container_width=True)
                         else:
                             strlm.success("✅ Harika! Limit aşan usulsüz nakit kasa işlemi saptanmadı.")
@@ -252,7 +257,7 @@ else:
                             else:
                                 strlm.success("✅ Tebrikler: Şirketin yasal sermaye yeterliliği koruma altındadır, borca batıklık riski yoktur.")
                         else:
-                            strlm.warning("⚠️ Bilgi: Yevmiye defterinde 500 Sermaye Hesabına ait movement saptanmadığı için TTK 376 rasyosu hesaplanamadı.")
+                            strlm.warning("⚠️ Bilgi: Yevmiye defterinde 500 Sermaye Hesabına ait hareket saptanmadığı için TTK 376 rasyosu hesaplanamadı.")
                             
                     with tab5:
                         strlm.subheader("📈 Verilerden Üretilen Kurumsal Özet Tablolar")
@@ -287,9 +292,3 @@ else:
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
-                        strlm.download_button(label="📥 Genişletilmiş Denetim Raporunu İndir (.xlsx)", data=output.getvalue(), file_name="Otranto_Uyum_Raporu.xlsx", use_container_width=True)
-            except Exception as e:
-                strlm.error(f"Sistem güvenli modda çalıştırılamadı. Detay: {e}")
-        else:
-            strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
-
