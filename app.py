@@ -23,7 +23,7 @@ mavi_stil = """
 """
 strlm.markdown(mavi_stil, unsafe_allow_html=True)
 
-# Gelişmiş Dinamik Kullanıcı Yönetimi
+# Gelişmiş Dinamik Kullanıcı Yönetimi (Oturum Hafızası)
 if "kullanici_veri_tabani" not in strlm.session_state:
     strlm.session_state["kullanici_veri_tabani"] = {
         "admin": {"sifre": "otrantoadmin2026", "ad": "Sistem Yöneticisi (Otranto)"},
@@ -139,7 +139,7 @@ else:
                                     t = sayfa.extract_table()
                                     if t: [yedek_satirlar.append(s) for s in t if any(s)]
                             if len(yedek_satirlar) > 1:
-                                df = pd.DataFrame(yedek_satirlar[1:], columns=yedek_satirlar)
+                                df = pd.DataFrame(yedek_satirlar[1:], columns=yedek_satirlar[0])
                 else:
                     df = pd.read_excel(yuklenen_dosya)
                 
@@ -185,5 +185,53 @@ else:
                             strlm.success("✅ Harika! 7.000 TL limitini aşan usulsüz nakit kasa işlemi bulunamadı.")
                             
                     with tab2:
-                        strlm.subheader("📅 10 Günlük Yasal Fatura Kayıt Süresi İhlali")
-
+strlm.subheader("📅 10 Günlük Yasal Fatura Kayıt Süresi İhlali")
+strlm.info("Kanunen faturalar kesildikten sonra 10 gün içinde işlenmelidir. Aşağıdaki kayıtlar yasal süreyi aşmıştır:")
+df['Gecikme_Gun'] = (df['Tarih'] - df['Evrak Tarihi']).dt.days
+gecikmeli_faturalar = df[df['Gecikme_Gun'] > 10]
+if not gecikmeli_faturalar.empty:
+strlm.warning(f"⚠️ Toplam {len(gecikmeli_faturalar)} işlemde yasal 10 günlük kayıt süresi aşılmış!")
+strlm.dataframe(gecikmeli_faturalar[['Tarih', 'Evrak Tarihi', 'Gecikme_Gun', 'Hesap Kodu', 'Açıklama', 'Borç']], use_container_width=True)
+else:
+strlm.success("✅ Mükemmel! Tüm faturalar yasal 10 günlük süre içinde zamanında işlenmiş.")
+with tab3:
+strlm.subheader("🔄 Mükerrer (Çift Girilen Fatura) Şüphesi")
+mukerrer = df[df.duplicated(subset=['Tarih', 'Hesap Kodu', 'Borç', 'Alacak'], keep=False) & ((df['Borç'] > 0) | (df['Alacak'] > 0))]
+if not mukerrer.empty:
+strlm.dataframe(mukerrer[['Tarih', 'Hesap Kodu', 'Borç', 'Alacak']].sort_values(by='Tarih'), use_container_width=True)
+else:
+strlm.success("✅ Temiz! Aynı gün çift girildiğinden şüphelenilen kayıt saptanmadı.")
+with tab4:
+strlm.subheader("⚖️ Aktif Karakterli Hesap Kontrolü")
+ters_durumlar = []
+for h_kod in ['100', '102']:
+h_df = df[df['Hesap Kodu Str'].str.startswith(h_kod)]
+top_b = h_df['Borç'].sum()
+top_a = h_df['Alacak'].sum()
+if top_a > top_b:
+ters_durumlar.append({"Hesap Kodu": h_kod, "Toplam Giriş (Borç)": top_b, "Toplam Çıkış (Alacak)": top_a, "Durum": "Eksi Bakiye (Hatalı)"})
+if ters_durumlar:
+strlm.dataframe(pd.DataFrame(ters_durumlar), use_container_width=True)
+else:
+strlm.success("✅ Doğru! Kasa ve Banka hesapları aritmetik olarak eksiye düşmemiştir.")
+with tab5:
+strlm.subheader("📈 Şirket Finansal Nakit Akışı")
+nakit_df = df[df['Hesap Kodu Str'].str.startswith(('100', '102'))].copy()
+if not nakit_df.empty:
+nakit_df['Ay'] = nakit_df['Tarih'].dt.to_period('M').astype(str)
+nakit_ozet = nakit_df.groupby('Ay')[['Borç', 'Alacak']].sum().reset_index()
+fig = px.bar(nakit_ozet, x='Ay', y=['Borç', 'Alacak'], barmode='group', color_discrete_sequence=['#328CC1', '#0B3C5D'])
+strlm.plotly_chart(fig, use_container_width=True)
+strlm.markdown("### 🔮 KDV Öngörü Sonucu")
+indirilecek_kdv = df[df['Hesap Kodu Str'].str.startswith('191')]['Borç'].sum()
+hesaplanan_kdv = df[df['Hesap Kodu Str'].str.startswith('391')]['Alacak'].sum()
+strlm.metric("Net KDV Durumu (Eksi ise Devir, Artı ise Ödeme)", f"{hesaplanan_kdv - indirilecek_kdv:,.2f} TL")
+# EXCEL RAPOR İNDİRME
+output = io.BytesIO()
+with pd.ExcelWriter(output, engine='openpyxl') as writer:
+df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
+strlm.download_button(label="📥 Denetim Raporunu Bilgisayara İndir (.xlsx)", data=output.getvalue(), file_name="Otranto_Mali_Denetim.xlsx", use_container_width=True)
+except Exception as e:
+strlm.error(f"Sistem hatası: {e}")
+else:
+strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
