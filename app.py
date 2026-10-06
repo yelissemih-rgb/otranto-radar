@@ -291,5 +291,6 @@ else:
                         
                         strlm.markdown("---")
                         output = io.BytesIO()
+                        
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                        df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
+                            df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
