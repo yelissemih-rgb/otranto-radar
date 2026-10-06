@@ -55,8 +55,7 @@ if not strlm.session_state["giris_yapildi"]:
                 strlm.session_state["giris_yapildi"] = True
                 strlm.session_state["aktif_kullanici"] = kullanici_adi
                 strlm.rerun()
-            else:
-                strlm.error("❌ Hatalı kullanıcı adı veya şifre girdiniz!")
+            else: strlm.error("❌ Hatalı kullanıcı adı veya şifre girdiniz!")
 
 # 3. GİRİŞ BAŞARILIYSA
 else:
@@ -90,7 +89,6 @@ else:
             df = None
             detected_company_name = None
             try:
-                # 🚀 KORUMALI VE TIKANMAYAN YENİ NESİL PDF OKUMA MOTORU
                 if yuklenen_dosya.name.endswith('.pdf'):
                     with strlm.spinner("🔮 Otranto PDF Tablolarını Ayıklıyor..."):
                         ayiklanan_veriler = []
@@ -112,25 +110,13 @@ else:
                                                 try:
                                                     float(a_ham)
                                                     hesap_bul = re.findall(r"\b\d{3}(?:\.\d+)?\b", satir)
-                                                    h_kod = hesap_bul if hesap_bul else ["000"]
+                                                    h_kod = hesap_bul if hesaphesap_bul else ["000"]
                                                     ayiklanan_veriler.append({
                                                         "Tarih": t_bul, "Evrak Tarihi": t_bul[-1], "Hesap Kodu": h_kod,
                                                         "Açıklama": " ".join(kelimeler[1:-2])[:80], "Borç": b_ham, "Alacak": a_ham
                                                     })
-                                                except ValueError:
-                                                    continue
-                        if len(ayiklanan_veriler) > 0:
-                            df = pd.DataFrame(ayiklanan_veriler)
-                        else:
-                            yedek_satirlar = []
-                            with pdfplumber.open(yuklenen_dosya) as pdf:
-                                for s in pdf.pages:
-                                    t = s.extract_table()
-                                    if t: [yedek_satirlar.append(r) for r in t if any(r)]
-                            if len(yedek_satirlar) > 1:
-                                df = pd.DataFrame(yedek_satirlar[1:])
-                                df.columns = ['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç', 'Alacak'] + list(df.columns[5:])
-                                df['Evrak Tarihi'] = df['Tarih']
+                                                except ValueError: continue
+                        if len(ayiklanan_veriler) > 0: df = pd.DataFrame(ayiklanan_veriler)
                 else:
                     df = pd.read_excel(yuklenen_dosya)
                     if not df.empty:
@@ -147,8 +133,6 @@ else:
                         strlm.rerun()
 
                 if df is not None and not df.empty:
-                    # 🚀 COĞRAFİ SÜTUN YERLEŞİM GEOMETRİSİ (HATAYI KÖKTEN ÇÖZEN KISIM)
-                    # Sütun isimlerine bakmadan sırayla en kritik kolonları pozisyonuna göre eşleştiriyoruz
                     yeni_df = pd.DataFrame()
                     yeni_df['Tarih'] = df.iloc[:, 0]
                     yeni_df['Hesap Kodu'] = df.iloc[:, 1]
@@ -156,7 +140,6 @@ else:
                     yeni_df['Borç'] = df.iloc[:, -2] if len(df.columns) > 3 else 0
                     yeni_df['Alacak'] = df.iloc[:, -1] if len(df.columns) > 4 else 0
                     yeni_df['Evrak Tarihi'] = yeni_df['Tarih']
-                    
                     df = yeni_df
                     
                     for col in ['Borç', 'Alacak']:
@@ -168,79 +151,126 @@ else:
                     df['Evrak Tarihi'] = pd.to_datetime(df['Evrak Tarihi'], errors='coerce', dayfirst=True).fillna(df['Tarih'])
                     df['Hesap Kodu Str'] = df['Hesap Kodu'].apply(lambda x: str(x)).str.strip()
                     
-                    strlm.success(f"📊 Otranto Finansal Analiz Paneli Aktif: Veriler başarıyla işlendi.")
+                    strlm.success(f"📊 Otranto Finansal Yapay Zeka Denetim Motoru Aktif.")
                     
-                    # --- SEKMELİ DENETİM EKRANI ---
-                    strlm.markdown("## 🚨 Otranto Gelişmiş Mali Denetim Müfettişi")
-                    sekmeler = ["💵 Kasa Sınırı (7.000 TL)", "📅 10 Günlük Fatura Giriş İhlali", "🔄 Mükerrer Kayıt Radarı", "⚖️ Ters Bakiye Veren Hesaplar", "📊 Finansal Özetler & Rapor"]
+                    # --- GENİŞLETİLMİŞ PANEL SEKMELERİ ---
+                    sekmeler = [
+                        "🛡️ Mali Denetim Müfettişi", 
+                        "📅 Yıl İçi Ters Bakiye Radarı",
+                        "💼 Ortaklar Cari & Adat Yükü",
+                        "⚖️ Sermaye Yeterlilik Oranları",
+                        "📊 Klasik Özetler & Rapor"
+                    ]
                     tab1, tab2, tab3, tab4, tab5 = strlm.tabs(sekmeler)
                     
                     with tab1:
-                        strlm.subheader("🚨 7.000 TL Üzeri Nakit Kasa İşlemleri")
+                        strlm.subheader("🚨 Riskli ve Usulsüz İşlem Denetimleri")
                         k_f = df['Hesap Kodu Str'].str.startswith('100')
                         t_f = (df['Borç'] >= 7000) | (df['Alacak'] >= 7000)
                         kasa_ihlali = df[k_f & t_f]
                         if not kasa_ihlali.empty:
-                            g_c = ['Tarih', 'Hesap Kodu Str', 'Açıklama', 'Borç', 'Alacak']
-                            strlm.dataframe(kasa_ihlali[g_c], use_container_width=True)
-                        else:
-                            strlm.success("✅ Harika! Limit aşan nakit kasa işlemi yok.")
+                            strlm.error(f"⚠️ Kanuni 7.000 TL Nakit Sınırını Aşan {len(kasa_ihlali)} İşlem Saptandı!")
+                            strlm.dataframe(kasa_ihlali[['Tarih', 'Hesap Kodu Str', 'Açıklama', 'Borç']], use_container_width=True)
+                        
+                        df['Gecikme_Gun'] = (df['Tarih'] - df['Evrak Tarihi']).dt.days
+                        gecikmeli = df[df['Gecikme_Gun'] > 10]
+                        if not gecikmeli.empty:
+                            strlm.warning(f"📅 10 Günlük Yasal Kayıt Süresini Geçen {len(gecikmeli)} Fatura Saptandı!")
+                            strlm.dataframe(gecikmeli[['Tarih', 'Evrak Tarihi', 'Gecikme_Gun', 'Açıklama', 'Borç']], use_container_width=True)
                             
                     with tab2:
-                        strlm.subheader("📅 10 Günlük Yasal Fatura Kayıt Süresi İhlali")
-                        df['Gecikme_Gun'] = (df['Tarih'] - df['Evrak Tarihi']).dt.days
-                        gecikmeli_faturalar = df[df['Gecikme_Gun'] > 10]
-                        if not gecikmeli_faturalar.empty:
-                            strlm.warning(f"⚠️ Toplam {len(gecikmeli_faturalar)} işlemde yasal süre aşılmış!")
-                            g_cols = ['Tarih', 'Evrak Tarihi', 'Gecikme_Gun', 'Hesap Kodu Str', 'Açıklama', 'Borç']
-                            strlm.dataframe(gecikmeli_faturalar[g_cols], use_container_width=True)
+                        strlm.subheader("📅 Yıl İçi Günlük Yürüyen Bakiye Ters Durum Radarı")
+                        strlm.info("Kasa veya Banka hesaplarının yıl içinde herhangi bir günde eksiye düştüğü tarihler:")
+                        
+                        df_sirali = df.sort_values(by='Tarih')
+                        ters_gunler = []
+                        for h_kod in ['100', '102']:
+                            h_df = df_sirali[df_sirali['Hesap Kodu Str'].str.startswith(h_kod)].copy()
+                            if not h_df.empty:
+                                h_df['Net_Hareket'] = h_df['Borç'] - h_df['Alacak']
+                                h_df['Yuruyen_Bakiye'] = h_df['Net_Hareket'].cumsum()
+                                eksi_gunler = h_df[h_df['Yuruyen_Bakiye'] < 0]
+                                for idx, row in eksi_gunler.iterrows():
+                                    ters_gunler.append({
+                                        "Tarih": row['Tarih'].strftime('%d.%m.%Y'), "Hesap": h_kod,
+                                        "O Günkü Açıklama": row['Açıklama'], "Kritik Yürüyen Bakiye": f"{row['Yuruyen_Bakiye']:,.2f} TL"
+                                    })
+                        if ters_gunler:
+                            strlm.error(f"🚨 DİKKAT: Hesaplar yıl içerisinde {len(ters_gunler)} defa eksi bakiye vermiştir!")
+                            strlm.dataframe(pd.DataFrame(ters_gunler), use_container_width=True)
                         else:
-                            strlm.success("✅ Mükemmel! Tüm faturalar yasal 10 günlük süre içinde işlenmiş.")
+                            strlm.success("✅ Tebrikler! Kasa ve Banka hesapları yıl içindeki hiçbir günde terse düşmemiştir.")
                             
                     with tab3:
-                        strlm.subheader("🔄 Mükerrer (Çift Girilen Fatura) Şüphesi")
-                        m_kriter = ['Tarih', 'Hesap Kodu Str', 'Borç', 'Alacak']
-                        m_tutar = (df['Borç'] > 0) | (df['Alacak'] > 0)
-                        mukerrer = df[df.duplicated(subset=m_kriter, keep=False) & m_tutar]
-                        if not mukerrer.empty:
-                            strlm.dataframe(mukerrer[m_kriter].sort_values(by='Tarih'), use_container_width=True)
+                        strlm.subheader("💼 131 / 331 Ortaklar Cari Hesabı & Adat (Faiz) Risk Radarı")
+                        strlm.info("Ortakların şirketten çektiği paralar (131) yıl sonunda adatlandırılarak faiz faturası kesilmelidir:")
+                        
+                        ortaklar_cekilen = df[df['Hesap Kodu Str'].str.startswith('131')]['Borç'].sum()
+                        ortaklar_odenen = df[df['Hesap Kodu Str'].str.startswith('131')]['Alacak'].sum()
+                        net_ortak_borc = ortaklar_cekilen - ortaklar_odenen
+                        
+                        c_adat1, c_adat2 = strlm.columns(2)
+                        c_adat1.metric("Ortakların Net Çektiği Para (131 Bakiye)", f"{net_ortak_borc:,.2f} TL")
+                        
+                        if net_ortak_borc > 50000:
+                            c_adat2.warning("🚨 YÜKSEK ADAT RİSKİ")
+                            strlm.error(f"⚠️ Ortaklar hesabı yüksek borç bakiyesi veriyor ({net_ortak_borc:,.2f} TL). Adat faiz faturası kesilmezse vergi cezası kesilebilir!")
                         else:
-                            strlm.success("✅ Temiz! Aynı gün çift girilen mükerrer kayıt saptanmadı.")
+                            c_adat2.success("✅ DÜŞÜK ADAT RİSKİ")
+                            strlm.success("Ortaklar cari hesabı güvenli sınırlar içerisinde yer almaktadır.")
                             
                     with tab4:
-                        strlm.subheader("⚖️ Aktif Karakterli Hesap Kontrolü")
-                        ters_durumlar = []
-                        for h_kod in ['100', '102']:
-                            h_df = df[df['Hesap Kodu Str'].str.startswith(h_kod)]
-                            top_b = h_df['Borç'].sum()
-                            top_a = h_df['Alacak'].sum()
-                            if top_a > top_b:
-                                ters_durumlar.append({"Hesap Kodu": h_kod, "Toplam Giriş (Borç)": top_b, "Toplam Çıkış (Alacak)": top_a, "Durum": "Eksi Bakiye (Hatalı)"})
-                        if ters_durumlar:
-                            strlm.dataframe(pd.DataFrame(ters_durumlar), use_container_width=True)
+                        strlm.subheader("⚖️ TTK 376. Madde Sermaye Yeterlilik & Borca Batıklık Analizi")
+                        
+                        donen_varlik = df[df['Hesap Kodu Str'].str.startswith('1')]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('1')]['Alacak'].sum()
+                        duran_varlik = df[df['Hesap Kodu Str'].str.startswith('2')]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('2')]['Alacak'].sum()
+                        kısa_borc = df[df['Hesap Kodu Str'].str.startswith('3')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('3')]['Borç'].sum()
+                        uzun_borc = df[df['Hesap Kodu Str'].str.startswith('4')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('4')]['Borç'].sum()
+                        ozkaynak = df[df['Hesap Kodu Str'].str.startswith('5')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('5')]['Borç'].sum()
+                        
+                        sermaye_500 = df[df['Hesap Kodu Str'].str.startswith('500')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('500')]['Borç'].sum()
+                        if sermaye_500 <= 0: sermaye_500 = 100000
+                        
+                        sermaye_kayip_orani = (1 - (ozkaynak / sermaye_500)) * 100
+                        
+                        s_col1, s_col2 = strlm.columns(2)
+                        s_col1.metric("Toplam Özkaynak Durumu", f"{ozkaynak:,.2f} TL")
+                        s_col2.metric("Sermaye Kayıp Oranı", f"% {sermaye_kayip_orani:.1f}")
+                        
+                        if sermaye_kayip_orani >= 66.6:
+                            strlm.error("🚨 TEHLİKE: TTK 376 uyarınca şirket sermayesinin 2/3'sini kaybetmiştir! Acilen sermaye artırımı yapılmalıdır.")
+                        elif sermaye_kayip_orani >= 50:
+                            strlm.warning("⚠️ UYARI: Şirket sermayesinin yarısını kaybetmiştir. Genel kurulun önlem alması zorunludur.")
                         else:
-                            strlm.success("✅ Doğru! Kasa ve Banka hesapları eksiye düşmemiştir.")
+                            strlm.success("✅ Şirketin sermaye yeterliliği koruma altındadır, borca batıklık riski saptanmamıştır.")
                             
                     with tab5:
-                        strlm.subheader("📈 Şirket Finansal Nakit Akışı")
-                        nakit_df = df[df['Hesap Kodu Str'].str.startswith(('100', '102'))].copy()
-                        if not nakit_df.empty:
-                            nakit_df['Ay'] = df['Tarih'].dt.to_period('M').astype(str)
-                            nakit_ozet = nakit_df.groupby('Ay')[['Borç', 'Alacak']].sum().reset_index()
-                            fig = px.bar(nakit_ozet, x='Ay', y=['Borç', 'Alacak'], barmode='group', color_discrete_sequence=['#328CC1', '#0B3C5D'])
-                            strlm.plotly_chart(fig, use_container_width=True)
-
-                        strlm.markdown("### 🔮 KDV Öngörü Sonucu")
-                        i_kdv = df[df['Hesap Kodu Str'].str.startswith('191')]['Borç'].sum()
-                        h_kdv = df[df['Hesap Kodu Str'].str.startswith('391')]['Alacak'].sum()
-                        strlm.metric("Net KDV Durumu (Eksi ise Devir, Artı ise Ödeme)", f"{h_kdv - i_kdv:,.2f} TL")
+                        strlm.subheader("📈 Klasik Finansal Özet Tabloları")
+                        brut_satis = df[df['Hesap Kodu Str'].str.startswith('60')]['Alacak'].sum()
+                        satis_ind = df[df['Hesap Kodu Str'].str.startswith('61')]['Borç'].sum()
+                        satis_maliyet = df[df['Hesap Kodu Str'].str.startswith('62')]['Borç'].sum()
+                        faaliyet_gid = df[df['Hesap Kodu Str'].str.startswith('63')]['Borç'].sum()
+                        net_kar = (brut_satis - satis_ind) - satis_maliyet - faaliyet_gid
                         
+                        col_t1, col_t2 = strlm.columns(2)
+                        with col_t1:
+                            strlm.write("**Özet Bilanço**")
+                            strlm.dataframe(pd.DataFrame({
+                                "Hesap Grubu": ["Dönen Varlıklar", "Duran Varlıklar", "Kısa Vadeli Borçlar", "Uzun Vadeli Borçlar", "Özkaynaklar"],
+                                "Tutar": [donen_varlik, duran_varlik, kısa_borc, uzun_borc, ozkaynak]
+                            }), use_container_width=True)
+                        with col_t2:
+                            strlm.write("**Özet Gelir Tablosu**")
+                            strlm.dataframe(pd.DataFrame({
+                                "Mali Kalem": ["Brüt Satış Gelirleri", "Satış İndirimleri (-)", "Satışların Maliyeti (-)", "Faaliyet Giderleri (-)", "Net Dönem Kârı / Zararı"],
+                                "Tutar": [brut_satis, satis_ind, satis_maliyet, faaliyet_gid, net_kar]
+                            }), use_container_width=True)
+                        
+                        strlm.markdown("---")
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
-                        strlm.download_button(label="📥 Denetim Raporunu Bilgisayara İndir (.xlsx)", data=output.getvalue(), file_name="Otranto_Mali_Denetim.xlsx", use_container_width=True)
-                else:
-                    strlm.error("⚠️ Dosya boş veya uygun formatta veri ayıklanamadı.")
+                        strlm.download_button(label="📥 Genişletilmiş Denetim Raporunu İndir (.xlsx)", data=output.getvalue(), file_name="Otranto_Uyum_Raporu.xlsx", use_container_width=True)
             except Exception as e:
                 strlm.error(f"Sistem güvenli modda çalıştırılamadı. Detay: {e}")
         else:
