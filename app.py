@@ -185,6 +185,7 @@ else:
                             strlm.success("✅ Harika! 7.000 TL limitini aşan usulsüz nakit kasa işlemi bulunamadı.")
                             
                     with tab2:
+Kodu dikkatli kullanın.
 strlm.subheader("📅 10 Günlük Yasal Fatura Kayıt Süresi İhlali")
 strlm.info("Kanunen faturalar kesildikten sonra 10 gün içinde işlenmelidir. Aşağıdaki kayıtlar yasal süreyi aşmıştır:")
 df['Gecikme_Gun'] = (df['Tarih'] - df['Evrak Tarihi']).dt.days
