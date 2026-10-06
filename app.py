@@ -4,7 +4,6 @@ import plotly.express as px
 from datetime import datetime
 import io
 import pdfplumber
-import re
 
 # 1. OTRANTO TEMA VE SAYFA AYARLARI
 strlm.set_page_config(page_title="Otranto Finansal Radar", layout="wide", page_icon="🔷")
@@ -52,10 +51,12 @@ if not strlm.session_state["giris_yapildi"]:
                 strlm.session_state["aktif_kullanici"] = kullanici_adi
                 strlm.session_state["firma_adi"] = db[kullanici_adi]["ad"]
                 strlm.rerun()
-            else: strlm.error("❌ Hatalı giriş!")
+            else:
+                strlm.error("❌ Hatalı giriş!")
 else:
     ust_col1, ust_col2 = strlm.columns(2)
-    with ust_col1: strlm.markdown(f"<h1>🔷 OTRANTO | {strlm.session_state['firma_adi']}</h1>", unsafe_allow_html=True)
+    with ust_col1:
+        strlm.markdown(f"<h1>🔷 OTRANTO | {strlm.session_state['firma_adi']}</h1>", unsafe_allow_html=True)
     with ust_col2:
         strlm.markdown("<br>", unsafe_allow_html=True)
         if strlm.button("🚪 Oturumu Kapat", use_container_width=True):
@@ -86,52 +87,46 @@ else:
         if yuklenen_dosya is not None:
             df = None
             try:
-                # EĞER PDF YÜKLENDİYSE (Yapay Zeka Metin Ayıklama Motoru)
+                # EĞER PDF YÜKLENDİYSE
                 if yuklenen_dosya.name.endswith('.pdf'):
-                    with strlm.spinner("🔮 Otranto PDF Tabloları Ayıklanıyor, Lütfen Bekleyin..."):
+                    with strlm.spinner("🔮 Otranto PDF Tabloları Ayıklanıyor..."):
                         pdf_satirlar = []
                         with pdfplumber.open(yuklenen_dosya) as pdf:
                             for sayfa in pdf.pages:
                                 tablo = sayfa.extract_table()
                                 if tablo:
                                     for satir in tablo:
-                                        # Boş olmayan satırları filtrele
                                         if any(satir):
                                             pdf_satirlar.append(satir)
                         
                         if len(pdf_satirlar) > 1:
-                            # İlk satırı başlık yap, veriyi dataframe'e dönüştür
                             df = pd.DataFrame(pdf_satirlar[1:], columns=pdf_satirlar[0])
                         else:
-                            strlm.error("PDF içinden tablo verisi okunamadı. Lütfen taranmış (resim) PDF olmadığından emin olun.")
+                            strlm.error("PDF içinden veri okunamadı.")
                 
                 # EĞER EXCEL YÜKLENDİYSE
                 else:
                     df = pd.read_excel(yuklenen_dosya)
                 
                 if df is not None:
-                    # Sütunları temizleme ve standartlaştırma
                     df.columns = df.columns.str.strip()
                     
-                    # Luca PDF çıktılarındaki olası farklı başlık isimlerini eşitleme
                     kolon_esleme = {
                         'Borç': 'Borç', 'Alacak': 'Alacak', 'Tarih': 'Tarih', 
                         'Hesap Kodu': 'Hesap Kodu', 'Hesap Adı': 'Hesap Adı', 'Açıklama': 'Açıklama'
                     }
                     df.rename(columns=kolon_esleme, inplace=True)
                     
-                    # Sayısal alanları temizleme (PDF'ten gelen virgüllü sayıları düzeltir)
                     for col in ['Borç', 'Alacak']:
                         if col in df.columns:
                             df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
                             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
                     
-                    # Tarih Filtreleme (2026 sonrası)
                     if 'Tarih' in df.columns:
                         df['Tarih'] = pd.to_datetime(df['Tarih'], errors='coerce', dayfirst=True)
                         df = df[df['Tarih'] >= '2026-01-01']
                     
-                    strlm.success(f"📊 Otranto Analiz Motoru Başarıyla Tamamlandı: {len(df)} satır finansal veri işlendi.")
+                    strlm.success(f"📊 Otranto Analiz Motoru Başarıyla Tamamlandı: {len(df)} satır veri işlendi.")
                     
                     if 'Hesap Kodu' in df.columns:
                         df['Hesap Kodu Str'] = df['Hesap Kodu'].astype(str).str.strip()
@@ -143,7 +138,7 @@ else:
                             nakit_df['Ay'] = nakit_df['Tarih'].dt.to_period('M').astype(str)
                             nakit_ozet = nakit_df.groupby('Ay')[['Borç', 'Alacak']].sum().reset_index()
                             fig = px.bar(nakit_ozet, x='Ay', y=['Borç', 'Alacak'], barmode='group',
-                                               title="Aylık Sıcak Para Giriş/Çıkış Dengesi (Mavi: Giriş, Koyu: Çıkış)",
+                                               title="Aylık Sıcak Para Giriş/Çıkış Dengesi",
                                                color_discrete_sequence=['#328CC1', '#0B3C5D'])
                             strlm.plotly_chart(fig, use_container_width=True)
 
@@ -157,15 +152,15 @@ else:
                         kdv_col1.metric("191 - İndirilecek KDV", f"{indirilecek_kdv:,.2f} TL")
                         kdv_col2.metric("391 - Hesaplanan KDV", f"{hesaplanan_kdv:,.2f} TL")
                         if kdv_fark > 0:
-                            kdv_col3.metric("🚨 Tahmini Ödenecek KDV", f"{kdv_fark:,.2f} TL", delta="-Ödeme Var")
+                            kdv_col3.metric("🚨 Tahmini Ödenecek KDV", f"{kdv_fark:,.2f} TL", delta="-Ödeme")
                         else:
-                            kdv_col3.metric("✅ Devreden KDV", f"{abs(kdv_fark):,.2f} TL", delta="+Devir Var")
+                            kdv_col3.metric("✅ Devreden KDV", f"{abs(kdv_fark):,.2f} TL", delta="+Devir")
 
                         # 3. HATALI FİŞ RADARI
                         strlm.markdown("## 3. 🚨 Hatalı / Kayıp Fiş Radarı")
                         if 'Açıklama' in df.columns:
                             df['Açıklama'] = df['Açıklama'].astype(str).str.lower()
-                            evrak_col = 'Evrak No' if 'Evrak No' in df.columns else df.columns[0] # Yedek kolonu bul
+                            evrak_col = 'Evrak No' if 'Evrak No' in df.columns else df.columns[0]
                             kayip_evrak = df[df['Açıklama'].str.contains('fat|ft|makbuz') & (df[evrak_col].isna() | (df[evrak_col] == ''))]
                             strlm.dataframe(kayip_evrak[['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç', 'Alacak']].head(20), use_container_width=True)
 
@@ -175,7 +170,8 @@ else:
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             df.head(1000).to_excel(writer, sheet_name='Otranto Finans Raporu', index=False)
                         excel_data = output.getvalue()
-                        strlm.download_button(label="📥 Yönetici Finans Analiz Raporunu İndir (.xlsx)", data=excel_data, file_name="Otranto_Analiz.xlsx", use_container_width=True)
-
+                        strlm.download_button(label="📥 Raporu İndir (.xlsx)", data=excel_data, file_name="Otranto_Analiz.xlsx", use_container_width=True)
             except Exception as e:
-
+                strlm.error(f"Sistem hatası: {e}")
+        else:
+            strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
