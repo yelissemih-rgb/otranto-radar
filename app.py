@@ -42,7 +42,7 @@ if not strlm.session_state["giris_yapildi"]:
     strlm.markdown("<h1 style='text-align: center; font-size: 3rem; letter-spacing: 2px;'>🔷 OTRANTO</h1>", unsafe_allow_html=True)
     strlm.markdown("<h3 style='text-align: center; color: #328CC1 !important;'>Akıllı Finansal Analiz & Denetim Platformu</h3>", unsafe_allow_html=True)
     
-    col1, col2, col3 = strlm.columns([1, 1.5, 1])
+    col1, col2, col3 = strlm.columns([1, 2, 1])
     with col2:
         strlm.markdown("<div style='background-color: white; padding: 30px; border-radius: 15px; box-shadow: 0px 4px 20px rgba(0,0,0,0.05);'>", unsafe_allow_html=True)
         kullanici_adi = strlm.text_input("Kullanıcı Adı / Firma Kodu").strip()
@@ -63,7 +63,7 @@ if not strlm.session_state["giris_yapildi"]:
 # 3. GİRİŞ BAŞARILIYSA ÇALIŞACAK ALAN
 else:
     # Üst Navigasyon ve Çıkış Butonu
-    ust_col1, ust_col2 = strlm.columns()
+    ust_col1, ust_col2 = strlm.columns(2)
     with ust_col1:
         strlm.markdown(f"<h1>🔷 OTRANTO <span style='color:#328CC1; font-size:1.5rem;'>| {strlm.session_state['firma_adi']}</span></h1>", unsafe_allow_html=True)
     with ust_col2:
