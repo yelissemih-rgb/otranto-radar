@@ -175,7 +175,7 @@ else:
                         if not kasa_ihlali.empty:
                             strlm.error(f"⚠️ Kanuni 7.000 TL Nakit Sınırını Aşan {len(kasa_ihlali)} İşlem Saptandı!")
                             strlm.dataframe(kasa_ihlali[['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç']], use_container_width=True)
-                                                else:
+                        else:
                             strlm.success("✅ Harika! Limit aşan usulsüz nakit kasa işlemi saptanmadı.")
                         
                         df['Gecikme_Gun'] = (df['Tarih'] - df['Evrak Tarihi']).dt.days
