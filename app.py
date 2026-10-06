@@ -137,13 +137,16 @@ else:
                         yeni_df = pd.DataFrame()
                         yeni_df['Tarih'] = df.iloc[:, 0]
                         yeni_df['Hesap Kodu'] = df.iloc[:, 1]
-                        yeni_df['Açıklama'] = df.iloc[:, 2] if len(df.columns) > 2 else "Açıklama Eksik"
+                        yeni_df['Açıklama'] = df.iloc[:, 2] if len(df.columns) > 2 else "Açıklama Belirtilmemiş"
                         yeni_df['Borç'] = df.iloc[:, -2] if len(df.columns) > 3 else 0
                         yeni_df['Alacak'] = df.iloc[:, -1] if len(df.columns) > 4 else 0
                         yeni_df['Evrak Tarihi'] = yeni_df['Tarih']
                         df = yeni_df
                     
-                    # 🚀 MUTLAK GÜVENLİK ADIMI: Hücreleri filtrelemeden önce zorla metne (string) çeviriyoruz
+                    # 🚀 %100 ÇÖZÜM: Tüm boş hayalet satırları ve geçersiz verileri fiziksel olarak siliyoruz
+                    df = df.dropna(subset=['Tarih', 'Hesap Kodu'])
+                    
+                    # Hücreleri kesinlikle temiz metne kilitliyoruz
                     df['Açıklama'] = df['Açıklama'].fillna("Açıklama Belirtilmemiş").astype(str).str.strip()
                     df['Hesap Kodu'] = df['Hesap Kodu'].fillna("000").astype(str).str.strip()
                     df['Tarih'] = df['Tarih'].fillna("").astype(str).str.strip()
@@ -162,6 +165,9 @@ else:
                     
                     # Noktaları kaldırıp muavin hesap kırılımlarını 3 haneye indiriyoruz
                     df['Hesap Kodu Str'] = df['Hesap Kodu'].astype(str).str.replace('.', '', regex=False).str.replace(' ', '', regex=False).str.strip().str.slice(0, 3)
+                    
+                    # 🚀 EK TEMİZLİK: Hayalet float kalıntılarını tamamen yok etmek için satır filtresi
+                    df = df[df['Hesap Kodu Str'].apply(lambda x: isinstance(x, str) and len(x) >= 3)]
                     
                     strlm.success(f"📊 Otranto Finansal Yapay Zeka Denetim Motoru Aktif.")
                     
@@ -288,7 +294,6 @@ else:
                                 "Mali Kalem": ["Brüt Satış Gelirleri", "Satış İndirimleri (-)", "Satışların Maliyeti (-)", "Faaliyet Giderleri (-)", "Net Dönem Kârı / Zararı"],
                                 "Tutar (TL)": [brut_satis, satis_ind, satis_maliyet, faaliyet_gid, net_kar]
                             }), use_container_width=True)
-                        
                         strlm.markdown("---")
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -304,4 +309,3 @@ else:
                 strlm.error(f"Sistem güvenli modda çalıştırılamadı. Detay: {e}")
         else:
             strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
-
