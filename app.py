@@ -102,7 +102,7 @@ else:
                     mevcut_firmalar.append({"Firma Kodu": k, "Firma Adı": v["ad"], "Şifre": v["sifre"]})
             strlm.dataframe(pd.DataFrame(mevcut_firmalar), use_container_width=True)
 
-    # --- MODÜL B: 📊 FİRMA ANALİZ PANELİ (MÜŞTERİ EKRANI) ---
+    # --- MODÜL B: 📊 FİRMA ANALİZ PANELİ (MÜŞTERI EKRANI) ---
     else:
         yuklenen_dosya = strlm.file_uploader("Luca Yevmiye Defteri (Excel veya PDF formatında yükleyebilirsiniz):", type=["xlsx", "xls", "pdf"])
 
@@ -137,7 +137,10 @@ else:
                                 yedek_satirlar = []
                                 for sayfa in pdf.pages:
                                     t = sayfa.extract_table()
-                                    if t: [yedek_satirlar.append(s) for s in t if any(s)]
+                                    if t:
+                                        for s in t:
+                                            if any(s):
+                                                yedek_satirlar.append(s)
                             if len(yedek_satirlar) > 1:
                                 df = pd.DataFrame(yedek_satirlar[1:], columns=yedek_satirlar[0])
                 else:
@@ -183,8 +186,7 @@ else:
                             strlm.dataframe(kasa_ihlali[['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç', 'Alacak']], use_container_width=True)
                         else:
                             strlm.success("✅ Harika! 7.000 TL limitini aşan usulsüz nakit kasa işlemi bulunamadı.")
-                            
-                    with tab2:
+with tab2:
 strlm.subheader("📅 10 Günlük Yasal Fatura Kayıt Süresi İhlali")
 strlm.info("Kanunen faturalar kesildikten sonra 10 gün içinde işlenmelidir. Aşağıdaki kayıtlar yasal süreyi aşmıştır:")
 df['Gecikme_Gun'] = (df['Tarih'] - df['Evrak Tarihi']).dt.days
@@ -215,7 +217,7 @@ strlm.dataframe(pd.DataFrame(ters_durumlar), use_container_width=True)
 else:
 strlm.success("✅ Doğru! Kasa ve Banka hesapları aritmetik olarak eksiye düşmemiştir.")
 with tab5:
-strlm.subheader("📈 Şirket Finansal Nakit Akışı")
+strlm.subheader("📈 Şiriket Finansal Nakit Akışı")
 nakit_df = df[df['Hesap Kodu Str'].str.startswith(('100', '102'))].copy()
 if not nakit_df.empty:
 nakit_df['Ay'] = nakit_df['Tarih'].dt.to_period('M').astype(str)
