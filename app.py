@@ -110,9 +110,9 @@ else:
                                                 try:
                                                     float(a_ham)
                                                     hesap_bul = re.findall(r"\b\d{3}(?:\.\d+)?\b", satir)
-                                                    h_kod = hesap_bul if hesap_bul else ["000"]
+                                                    h_kod = hesap_bul[0] if hesap_bul else "000"
                                                     ayiklanan_veriler.append({
-                                                        "Tarih": t_bul, "Evrak Tarihi": t_bul[-1], "Hesap Kodu": h_kod,
+                                                        "Tarih": t_bul[0], "Evrak Tarihi": t_bul[-1], "Hesap Kodu": h_kod,
                                                         "Açıklama": " ".join(kelimeler[1:-2])[:80], "Borç": b_ham, "Alacak": a_ham
                                                     })
                                                 except ValueError: continue
@@ -133,19 +133,18 @@ else:
                         strlm.rerun()
 
                 if df is not None and not df.empty:
-                    yeni_df = pd.DataFrame()
-                    yeni_df['Tarih'] = df.iloc[:, 0]
-                    yeni_df['Hesap Kodu'] = df.iloc[:, 1]
-                    yeni_df['Açıklama'] = df.iloc[:, 2] if len(df.columns) > 2 else "Açıklama Eksik"
-                    yeni_df['Borç'] = df.iloc[:, -2] if len(df.columns) > 3 else 0
-                    yeni_df['Alacak'] = df.iloc[:, -1] if len(df.columns) > 4 else 0
-                    yeni_df['Evrak Tarihi'] = yeni_df['Tarih']
-                    df = yeni_df
+                    if not yuklenen_dosya.name.endswith('.pdf'):
+                        yeni_df = pd.DataFrame()
+                        yeni_df['Tarih'] = df.iloc[:, 0]
+                        yeni_df['Hesap Kodu'] = df.iloc[:, 1]
+                        yeni_df['Açıklama'] = df.iloc[:, 2] if len(df.columns) > 2 else "Açıklama Eksik"
+                        yeni_df['Borç'] = df.iloc[:, -2] if len(df.columns) > 3 else 0
+                        yeni_df['Alacak'] = df.iloc[:, -1] if len(df.columns) > 4 else 0
+                        yeni_df['Evrak Tarihi'] = yeni_df['Tarih']
+                        df = yeni_df
                     
-                    # 🚀 SAYI TEMİZLEME ROBOTU: Nokta, virgül ve görünmez boşlukları kesin olarak temizler
                     for col in ['Borç', 'Alacak']:
                         df[col] = df[col].astype(str).str.replace(' ', '', regex=False)
-                        # Binlik ayırıcı olan noktaları kaldır, virgüle çevrilmiş olanları noktaya çek
                         df[col] = df[col].apply(lambda x: x.replace('.', '').replace(',', '.') if ',' in x and '.' in x else x)
                         df[col] = df[col].apply(lambda x: x.replace('.', '') if '.' in x and ',' not in x and len(x.split('.')[-1]) == 2 else x)
                         df[col] = df[col].str.replace(',', '.', regex=False)
@@ -155,12 +154,10 @@ else:
                     df = df.dropna(subset=['Tarih'])
                     df['Evrak Tarihi'] = pd.to_datetime(df['Evrak Tarihi'], errors='coerce', dayfirst=True).fillna(df['Tarih'])
                     
-                    # Muavin kırılımları temizleme (Örn: 100.01 -> 100)
                     df['Hesap Kodu Str'] = df['Hesap Kodu'].astype(str).str.replace('.', '', regex=False).str.replace(' ', '', regex=False).str.strip().str.slice(0, 3)
                     
                     strlm.success(f"📊 Otranto Finansal Yapay Zeka Denetim Motoru Aktif.")
                     
-                    # --- GENİŞLETİLMİŞ PANEL SEKMELERİ ---
                     sekmeler = [
                         "🛡️ Mali Denetim Müfettişi", 
                         "📅 Yıl İçi Ters Bakiye Radarı",
@@ -178,7 +175,7 @@ else:
                         if not kasa_ihlali.empty:
                             strlm.error(f"⚠️ Kanuni 7.000 TL Nakit Sınırını Aşan {len(kasa_ihlali)} İşlem Saptandı!")
                             strlm.dataframe(kasa_ihlali[['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç']], use_container_width=True)
-                        else:
+                                                else:
                             strlm.success("✅ Harika! Limit aşan usulsüz nakit kasa işlemi saptanmadı.")
                         
                         df['Gecikme_Gun'] = (df['Tarih'] - df['Evrak Tarihi']).dt.days
@@ -214,7 +211,6 @@ else:
                             
                     with tab3:
                         strlm.subheader("💼 131 / 331 Ortaklar Cari Hesabı & Adat (Faiz) Risk Radarı")
-                        
                         o_131_b = df[df['Hesap Kodu Str'] == '131']['Borç'].sum()
                         o_131_a = df[df['Hesap Kodu Str'] == '131']['Alacak'].sum()
                         bakiye_131 = o_131_b - o_131_a
@@ -228,13 +224,12 @@ else:
                         c_adat2.metric("331 Ortaklara Borç Bakiye", f"{bakiye_331:,.2f} TL")
                         
                         if bakiye_131 > 0:
-                            strlm.error(f"🚨 TEHLİKE: 131 Ortaklar hesabı {bakiye_131:,.2f} TL BORÇ bakiyesi veriyor! Dönem sonunda bu tutar üzerinden adat faiz faturası kesilmesi kanunen zorunludur!")
+                            strlm.error(f"🚨 TEHLİKE: 131 Ortaklar hesabı {bakiye_131:,.2f} TL BORÇ bakiyesi veriyor! Dönem sonunda adat faiz faturası kesilmesi kanunen zorunludur!")
                         else:
                             strlm.success("✅ Risk Yok: Ortakların şirkete borcu bulunmamaktadır (131 adat yükü riski saptanmadı).")
                             
                     with tab4:
                         strlm.subheader("⚖️ TTK 376. Madde Sermaye Yeterlilik & Borca Batıklık Analizi")
-                        
                         donen_varlik = df[df['Hesap Kodu Str'].str.startswith('1')]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('1')]['Alacak'].sum()
                         duran_varlik = df[df['Hesap Kodu Str'].str.startswith('2')]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('2')]['Alacak'].sum()
                         kısa_borc = df[df['Hesap Kodu Str'].str.startswith('3')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('3')]['Borç'].sum()
@@ -261,7 +256,6 @@ else:
                             
                     with tab5:
                         strlm.subheader("📈 Verilerden Üretilen Kurumsal Özet Tablolar")
-                        
                         donen_varlik = df[df['Hesap Kodu Str'].str.startswith('1')]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('1')]['Alacak'].sum()
                         duran_varlik = df[df['Hesap Kodu Str'].str.startswith('2')]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('2')]['Alacak'].sum()
                         kısa_borc = df[df['Hesap Kodu Str'].str.startswith('3')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('3')]['Borç'].sum()
@@ -292,3 +286,9 @@ else:
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
+                        strlm.download_button(label="📥 Genişletilmiş Denetim Raporunu İndir (.xlsx)", data=output.getvalue(), file_name="Otranto_Uyum_Raporu.xlsx", use_container_width=True)
+            except Exception as e:
+                strlm.error(f"Sistem güvenli modda çalıştırılamadı. Detay: {e}")
+        else:
+            strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
+
