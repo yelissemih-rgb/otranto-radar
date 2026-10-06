@@ -143,8 +143,11 @@ else:
                         yeni_df['Evrak Tarihi'] = yeni_df['Tarih']
                         df = yeni_df
                     
-                    # 🚀 Boş kalan açıklamaları güvenli metne çeviriyoruz (Kritik Düzeltme)
-                    df['Açıklama'] = df['Açıklama'].fillna("Açıklama Belirtilmemiş").astype(str)
+                    # 🚀 KESİN ÇÖZÜM: Tüm sütunları baştan string formatına zorluyoruz ve NaN değerleri engelliyoruz
+                    df['Açıklama'] = df['Açıklama'].fillna("Açıklama Belirtilmemiş").astype(str).str.strip()
+                    df['Hesap Kodu'] = df['Hesap Kodu'].fillna("000").astype(str).str.strip()
+                    df['Tarih'] = df['Tarih'].fillna("").astype(str).str.strip()
+                    df['Evrak Tarihi'] = df['Evrak Tarihi'].fillna("").astype(str).str.strip()
                     
                     for col in ['Borç', 'Alacak']:
                         df[col] = df[col].astype(str).str.replace(' ', '', regex=False)
@@ -157,6 +160,7 @@ else:
                     df = df.dropna(subset=['Tarih'])
                     df['Evrak Tarihi'] = pd.to_datetime(df['Evrak Tarihi'], errors='coerce', dayfirst=True).fillna(df['Tarih'])
                     
+                    # Hesap kodlarını temiz metne dönüştür
                     df['Hesap Kodu Str'] = df['Hesap Kodu'].astype(str).str.replace('.', '', regex=False).str.replace(' ', '', regex=False).str.strip().str.slice(0, 3)
                     
                     strlm.success(f"📊 Otranto Finansal Yapay Zeka Denetim Motoru Aktif.")
@@ -233,11 +237,11 @@ else:
                             
                     with tab4:
                         strlm.subheader("⚖️ TTK 376. Madde Sermaye Yeterlilik & Borca Batıklık Analizi")
-                        donen_varlik = df[df['Hesap Kodu Str'].str.startswith('1')]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('1')]['Alacak'].sum()
-                        duran_varlik = df[df['Hesap Kodu Str'].str.startswith('2')]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('2')]['Alacak'].sum()
-                        kısa_borc = df[df['Hesap Kodu Str'].str.startswith('3')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('3')]['Borç'].sum()
-                        uzun_borc = df[df['Hesap Kodu Str'].str.startswith('4')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('4')]['Borç'].sum()
-                        ozkaynak = df[df['Hesap Kodu Str'].str.startswith('5')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('5')]['Borç'].sum()
+                        donen_varlik = df[df['Hesap Kodu Str'].str.startswith('1', na=False)]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('1', na=False)]['Alacak'].sum()
+                        duran_varlik = df[df['Hesap Kodu Str'].str.startswith('2', na=False)]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('2', na=False)]['Alacak'].sum()
+                        kısa_borc = df[df['Hesap Kodu Str'].str.startswith('3', na=False)]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('3', na=False)]['Borç'].sum()
+                        uzun_borc = df[df['Hesap Kodu Str'].str.startswith('4', na=False)]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('4', na=False)]['Borç'].sum()
+                        ozkaynak = df[df['Hesap Kodu Str'].str.startswith('5', na=False)]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('5', na=False)]['Borç'].sum()
                         
                         sermaye_500 = df[df['Hesap Kodu Str'] == '500']['Alacak'].sum() - df[df['Hesap Kodu Str'] == '500']['Borç'].sum()
                         
@@ -259,16 +263,16 @@ else:
                             
                     with tab5:
                         strlm.subheader("📈 Verilerden Üretilen Kurumsal Özet Tablolar")
-                        donen_varlik = df[df['Hesap Kodu Str'].str.startswith('1')]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('1')]['Alacak'].sum()
-                        duran_varlik = df[df['Hesap Kodu Str'].str.startswith('2')]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('2')]['Alacak'].sum()
-                        kısa_borc = df[df['Hesap Kodu Str'].str.startswith('3')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('3')]['Borç'].sum()
-                        uzun_borc = df[df['Hesap Kodu Str'].str.startswith('4')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('4')]['Borç'].sum()
-                        ozkaynak = df[df['Hesap Kodu Str'].str.startswith('5')]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('5')]['Borç'].sum()
+                        donen_varlik = df[df['Hesap Kodu Str'].str.startswith('1', na=False)]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('1', na=False)]['Alacak'].sum()
+                        duran_varlik = df[df['Hesap Kodu Str'].str.startswith('2', na=False)]['Borç'].sum() - df[df['Hesap Kodu Str'].str.startswith('2', na=False)]['Alacak'].sum()
+                        kısa_borc = df[df['Hesap Kodu Str'].str.startswith('3', na=False)]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('3', na=False)]['Borç'].sum()
+                        uzun_borc = df[df['Hesap Kodu Str'].str.startswith('4', na=False)]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('4', na=False)]['Borç'].sum()
+                        ozkaynak = df[df['Hesap Kodu Str'].str.startswith('5', na=False)]['Alacak'].sum() - df[df['Hesap Kodu Str'].str.startswith('5', na=False)]['Borç'].sum()
                         
-                        brut_satis = df[df['Hesap Kodu Str'].str.startswith('60')]['Alacak'].sum()
-                        satis_ind = df[df['Hesap Kodu Str'].str.startswith('61')]['Borç'].sum()
-                        satis_maliyet = df[df['Hesap Kodu Str'].str.startswith('62')]['Borç'].sum()
-                        faaliyet_gid = df[df['Hesap Kodu Str'].str.startswith('63')]['Borç'].sum()
+                        brut_satis = df[df['Hesap Kodu Str'].str.startswith('60', na=False)]['Alacak'].sum()
+                        satis_ind = df[df['Hesap Kodu Str'].str.startswith('61', na=False)]['Borç'].sum()
+                        satis_maliyet = df[df['Hesap Kodu Str'].str.startswith('62', na=False)]['Borç'].sum()
+                        faaliyet_gid = df[df['Hesap Kodu Str'].str.startswith('63', na=False)]['Borç'].sum()
                         net_kar = (brut_satis - satis_ind) - satis_maliyet - faaliyet_gid
                         
                         col_t1, col_t2 = strlm.columns(2)
@@ -289,8 +293,3 @@ else:
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
-                        strlm.download_button(label="📥 Genişletilmiş Denetim Raporunu İndir (.xlsx)", data=output.getvalue(), file_name="Otranto_Uyum_Raporu.xlsx", use_container_width=True)
-            except Exception as e:
-                strlm.error(f"Sistem güvenli modda çalıştırılamadı. Detay: {e}")
-        else:
-            strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
