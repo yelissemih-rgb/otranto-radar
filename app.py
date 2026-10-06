@@ -97,55 +97,47 @@ else:
         if yuklenen_dosya is not None:
             df = None
             try:
-                # 🚀 AKILLI KELİME AVCI PDF MOTORU (HATA VERMEYEN YENİ SİSTEM)
+                # 🚀 ESNEK LUCA AKILLI PDF MOTORU (HATA VERMEYEN YENİ NESİL)
                 if yuklenen_dosya.name.endswith('.pdf'):
-                    with strlm.spinner("🔮 Otranto PDF Analiz Motoru Çalışıyor..."):
+                    with strlm.spinner("🔮 Otranto Gelişmiş PDF Taraması Yapılıyor..."):
                         ayiklanan_veriler = []
-                        tarih_deseni = r"\b\d{2}\.\d{2}\.\d{4}\b"
-                        hesap_deseni = r"\b\d{3}\b|\b\d{3}\.\d{2,}\b"
-                        
                         with pdfplumber.open(yuklenen_dosya) as pdf:
                             for sayfa in pdf.pages:
                                 metin = sayfa.extract_text()
                                 if metin:
                                     for satir in metin.split('\n'):
                                         kelimeler = satir.split()
-                                        if len(kelimeler) >= 4:
-                                            # Satırda tarih ve hesap kodu avı
-                                            tarihler = re.findall(tarih_deseni, satir)
-                                            hesaplar = re.findall(hesap_deseni, satir)
+                                        if len(kelimeler) >= 3:
+                                            # Esnek kelime yakalama analizi
+                                            satir_metni = " ".join(kelimeler)
+                                            tarihler = re.findall(r"\b\d{2}\.\d{2}\.\d{4}\b", satir_metni)
+                                            hesaplar = re.findall(r"\b\d{3}(?:\.\d+)?\b", satir_metni)
                                             
                                             if tarihler and hesaplar:
-                                                islem_tarihi = tarihler[0]
-                                                hesap_kodu = hesaplar[0]
-                                                
-                                                # Borç ve Alacak tutarlarını yakalama (Son iki kelime)
-                                                b_tutar = kelimeler[-2]
-                                                a_tutar = kelimeler[-1]
-                                                
-                                                # Açıklama kısmını birleştirme
-                                                aciklama = " ".join(kelimeler[2:-2])
-                                                
                                                 ayiklanan_veriler.append({
-                                                    "Tarih": islem_tarihi,
-                                                    "Evrak Tarihi": islem_tarihi,
-                                                    "Hesap Kodu": hesap_kodu,
-                                                    "Açıklama": aciklama,
-                                                    "Borç": b_tutar,
-                                                    "Alacak": a_tutar
+                                                    "Tarih": tarihler[0],
+                                                    "Evrak Tarihi": tarihler[-1],
+                                                    "Hesap Kodu": hesaplar[0],
+                                                    "Açıklama": satir_metni[:100],
+                                                    "Borç": kelimeler[-2] if len(kelimeler) > 4 else "0",
+                                                    "Alacak": kelimeler[-1]
                                                 })
                         
                         if len(ayiklanan_veriler) > 0:
                             df = pd.DataFrame(ayiklanan_veriler)
                         else:
-                            # Yedek Tablo Çekicisi
+                            # 2. Kademe Genel Tablo Ayıklayıcı
                             with pdfplumber.open(yuklenen_dosya) as pdf:
                                 yedek_satirlar = []
-                                for sayfa in pdf.pages:
-                                    t = sayfa.extract_table()
-                                    if t: [yedek_satirlar.append(s) for s in t if any(s)]
+                                for s in pdf.pages:
+                                    t = s.extract_table()
+                                    if t: [yedek_satirlar.append(row) for row in t if any(row)]
                             if len(yedek_satirlar) > 1:
-                                df = pd.DataFrame(yedek_satirlar[1:], columns=yedek_satirlar[0])
+                                df = pd.DataFrame(yedek_satirlar[1:])
+                                df.columns = [f"Kolon_{i}" for i in range(len(df.columns))]
+                                # Kolonları Luca standartlarına eşitle
+                                if len(df.columns) >= 5:
+                                    df.rename(columns={df.columns[0]: 'Tarih', df.columns[1]: 'Hesap Kodu', df.columns[2]: 'Açıklama', df.columns[-2]: 'Borç', df.columns[-1]: 'Alacak'}, inplace=True)
                 else:
                     df = pd.read_excel(yuklenen_dosya)
                 
@@ -153,6 +145,9 @@ else:
                     df.columns = df.columns.str.strip()
                     kolon_esleme = {'Borç': 'Borç', 'Alacak': 'Alacak', 'Tarih': 'Tarih', 'Hesap Kodu': 'Hesap Kodu', 'Hesap Adı': 'Hesap Adı', 'Açıklama': 'Açıklama', 'Evrak Tarihi': 'Evrak Tarihi'}
                     df.rename(columns=kolon_esleme, inplace=True)
+                    
+                    if 'Evrak Tarihi' not in df.columns:
+                        df['Evrak Tarihi'] = df['Tarih']
                     
                     for col in ['Borç', 'Alacak']:
                         if col in df.columns:
@@ -163,10 +158,7 @@ else:
                         df['Tarih'] = pd.to_datetime(df['Tarih'], errors='coerce', dayfirst=True)
                         df = df[df['Tarih'] >= '2026-01-01']
                     
-                    if 'Evrak Tarihi' not in df.columns:
-                        df['Evrak Tarihi'] = df['Tarih']
-                    else:
-                        df['Evrak Tarihi'] = pd.to_datetime(df['Evrak Tarihi'], errors='coerce', dayfirst=True).fillna(df['Tarih'])
+                    df['Evrak Tarihi'] = pd.to_datetime(df['Evrak Tarihi'], errors='coerce', dayfirst=True).fillna(df['Tarih'])
                     
                     strlm.success(f"📊 Otranto Finansal Analiz Paneli Aktif: {len(df)} satır veri işlendi.")
                     df['Hesap Kodu Str'] = df['Hesap Kodu'].astype(str).str.strip()
@@ -180,38 +172,22 @@ else:
                         strlm.subheader("🚨 7.000 TL Üzeri Nakit Kasa İşlemleri")
                         k_f = df['Hesap Kodu Str'].str.startswith('100')
                         t_f = (df['Borç'] >= 7000) | (df['Alacak'] >= 7000)
-                    # --- GELECEK SEKMELİ DENETİM EKRANI ---
-                    strlm.markdown("## 🚨 Otranto Gelişmiş Mali Denetim Müfettişi")
-                    sekmeler = [
-                        "💵 Kasa Sınırı (7.000 TL)", 
-                        "📅 10 Günlük Fatura Giriş İhlali", 
-                        "🔄 Mükerrer Kayıt Radarı", 
-                        "⚖️ Ters Bakiye Veren Hesaplar", 
-                        "📊 Finansal Özetler & Rapor"
-                    ]
-                    tab1, tab2, tab3, tab4, tab5 = strlm.tabs(sekmeler)
-                    
-                    with tab1:
-                        strlm.subheader("🚨 7.000 TL Üzeri Nakit Kasa İşlemleri")
-                        k_f = df['Hesap Kodu Str'].str.startswith('100')
-                        t_f = (df['Borç'] >= 7000) | (df['Alacak'] >= 7000)
                         kasa_ihlali = df[k_f & t_f]
                         if not kasa_ihlali.empty:
-                            g_c = ['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç', 'Alacak']
-                            strlm.dataframe(kasa_ihlali[g_c], use_container_width=True)
+                            strlm.dataframe(kasa_ihlali[['Tarih', 'Hesap Kodu', 'Açıklama', 'Borç', 'Alacak']], use_container_width=True)
                         else:
-                            strlm.success("✅ Harika! Limit aşan nakit kasa işlemi yok.")
+                        else:
+                            strlm.success("✅ Harika! Limit aşan usulsüz nakit kasa işlemi yok.")
                             
                     with tab2:
                         strlm.subheader("📅 10 Günlük Yasal Fatura Kayıt Süresi İhlali")
                         df['Gecikme_Gun'] = (df['Tarih'] - df['Evrak Tarihi']).dt.days
                         gecikmeli_faturalar = df[df['Gecikme_Gun'] > 10]
                         if not gecikmeli_faturalar.empty:
-                            strlm.warning(f"⚠️ Toplam {len(gecikmeli_faturalar)} işlemde süre aşılmış!")
-                            g_cols = ['Tarih', 'Evrak Tarihi', 'Gecikme_Gun', 'Hesap Kodu', 'Açıklama', 'Borç']
-                            strlm.dataframe(gecikmeli_faturalar[g_cols], use_container_width=True)
+                            strlm.warning(f"⚠️ Toplam {len(gecikmeli_faturalar)} işlemde yasal süre aşılmış!")
+                            strlm.dataframe(gecikmeli_faturalar[['Tarih', 'Evrak Tarihi', 'Gecikme_Gun', 'Hesap Kodu', 'Açıklama', 'Borç']], use_container_width=True)
                         else:
-                            strlm.success("✅ Mükemmel! Tüm faturalar yasal sürede işlenmiş.")
+                            strlm.success("✅ Mükemmel! Tüm faturalar yasal 10 günlük süre içinde işlenmiş.")
                             
                     with tab3:
                         strlm.subheader("🔄 Mükerrer (Çift Girilen Fatura) Şüphesi")
@@ -221,7 +197,7 @@ else:
                         if not mukerrer.empty:
                             strlm.dataframe(mukerrer[m_kriter].sort_values(by='Tarih'), use_container_width=True)
                         else:
-                            strlm.success("✅ Temiz! Aynı gün çift girilen mükerrer kayıt yok.")
+                            strlm.success("✅ Temiz! Aynı gün çift girilen mükerrer kayıt saptanmadı.")
                             
                     with tab4:
                         strlm.subheader("⚖️ Aktif Karakterli Hesap Kontrolü")
@@ -231,12 +207,7 @@ else:
                             top_b = h_df['Borç'].sum()
                             top_a = h_df['Alacak'].sum()
                             if top_a > top_b:
-                                ters_durumlar.append({
-                                    "Hesap Kodu": h_kod, 
-                                    "Toplam Giriş (Borç)": top_b, 
-                                    "Toplam Çıkış (Alacak)": top_a, 
-                                    "Durum": "Eksi Bakiye (Hatalı)"
-                                })
+                                ters_durumlar.append({"Hesap Kodu": h_kod, "Toplam Giriş (Borç)": top_b, "Toplam Çıkış (Alacak)": top_a, "Durum": "Eksi Bakiye (Hatalı)"})
                         if ters_durumlar:
                             strlm.dataframe(pd.DataFrame(ters_durumlar), use_container_width=True)
                         else:
@@ -259,7 +230,7 @@ else:
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
-                        strlm.download_button(label="📥 Denetim Raporunu İndir (.xlsx)", data=output.getvalue(), file_name="Otranto_Mali_Denetim.xlsx", use_container_width=True)
+                        strlm.download_button(label="📥 Denetim Raporunu Bilgisayara İndir (.xlsx)", data=output.getvalue(), file_name="Otranto_Mali_Denetim.xlsx", use_container_width=True)
                 else:
                     strlm.error("⚠️ Dosya boş veya uygun formatta veri ayıklanamadı.")
             except Exception as e:
