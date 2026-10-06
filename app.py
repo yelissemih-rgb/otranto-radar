@@ -110,7 +110,7 @@ else:
                                                 try:
                                                     float(a_ham)
                                                     hesap_bul = re.findall(r"\b\d{3}(?:\.\d+)?\b", satir)
-                                                    h_kod = hesap_bul if hesap_bul else "000"
+                                                    h_kod = hesap_bul if hesap_bul else ["000"]
                                                     ayiklanan_veriler.append({
                                                         "Tarih": t_bul, "Evrak Tarihi": t_bul[-1], "Hesap Kodu": h_kod,
                                                         "Açıklama": " ".join(kelimeler[1:-2])[:80], "Borç": b_ham, "Alacak": a_ham
@@ -143,7 +143,7 @@ else:
                         yeni_df['Evrak Tarihi'] = yeni_df['Tarih']
                         df = yeni_df
                     
-                    # 🚀 Boş kalan açıklamaları güvenli metne çeviriyoruz (Hatanın kesin çözümü)
+                    # 🚀 Boş kalan açıklamaları güvenli metne çeviriyoruz (Kritik Düzeltme)
                     df['Açıklama'] = df['Açıklama'].fillna("Açıklama Belirtilmemiş").astype(str)
                     
                     for col in ['Borç', 'Alacak']:
