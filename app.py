@@ -106,7 +106,6 @@ else:
                                             satir_metni = " ".join(kelimeler)
                                             tarih_bul = re.findall(r"\b\d{2}\.\d{2}\.\d{4}\b", satir_metni)
                                             
-                                            # Hata veren unvan temizleme deseni en başa taşınarak düzeltildi
                                             if not detected_company_name and any(k in satir.lower() for k in ["ltd", "a.ş", "tic", "san", "ştd"]):
                                                 detected_company_name = satir.strip()
                                             
@@ -120,9 +119,9 @@ else:
                                                     h_kod = hesap_bul if hesap_bul else ["000"]
                                                     
                                                     ayiklanan_veriler.append({
-                                                        "Tarih": t_bul[0],
+                                                        "Tarih": t_bul,
                                                         "Evrak Tarihi": t_bul[-1],
-                                                        "Hesap Kodu": h_kod[0],
+                                                        "Hesap Kodu": h_kod,
                                                         "Açıklama": " ".join(kelimeler[1:-2])[:80],
                                                         "Borç": b_ham,
                                                         "Alacak": a_ham
@@ -151,7 +150,7 @@ else:
                                 detected_company_name = h_m.strip()
                                 break
 
-                # Dinamik Firma Ünvanı Kontrolü (Hatasızlaştırılmış Versiyon)
+                # Hata veren Regex (?i) yapısı Python kurallarına göre en başa çekilerek düzeltildi
                 if detected_company_name:
                     c_name = re.sub(r"(?i)^unvan[:\s]*-*|(?i)^firma[:\s]*-*", "", detected_company_name).strip()
                     if c_name and strlm.session_state["firma_adi"] != c_name:
@@ -175,12 +174,11 @@ else:
                     df = df[df['Tarih'] >= '2026-01-01']
                     df['Evrak Tarihi'] = pd.to_datetime(df['Evrak Tarihi'], errors='coerce', dayfirst=True).fillna(df['Tarih'])
                     
-                    # Liste tipi verileri güvenle temiz metne çeviriyoruz
-                    df['Hesap Kodu Str'] = df['Hesap Kodu'].apply(lambda x: str(x[0]) if isinstance(x, list) and len(x) > 0 else str(x)).str.strip()
+                    df['Hesap Kodu Str'] = df['Hesap Kodu'].apply(lambda x: str(x) if isinstance(x, list) and len(x) > 0 else str(x)).str.strip()
                     
-                    # --- SEKMELİ DENETİM EKRANI ---
+                                        # --- SEKMELİ DENETİM EKRANI ---
                     strlm.markdown("## 🚨 Otranto Gelişmiş Mali Denetim Müfettişi")
-                      sekmeler = [
+                    sekmeler = [
                         "💵 Kasa Sınırı (7.000 TL)", 
                         "📅 10 Günlük Fatura Giriş İhlali", 
                         "🔄 Mükerrer Kayıt Radarı", 
