@@ -170,7 +170,7 @@ else:
                     ]
                     tab1, tab2, tab3, tab4, tab5 = strlm.tabs(sekmeler)
                     
-                    with tab1:
+                                       with tab1:
                         strlm.subheader("🚨 Riskli ve Usulsüz İşlem Denetimleri")
                         k_f = df['Hesap Kodu Str'] == '100'
                         t_f = (df['Borç'] >= 7000) | (df['Alacak'] >= 7000)
