@@ -147,38 +147,21 @@ else:
                         strlm.rerun()
 
                 if df is not None and not df.empty:
-                    df.columns = df.columns.str.strip().str.lower()
+                    # 🚀 COĞRAFİ SÜTUN YERLEŞİM GEOMETRİSİ (HATAYI KÖKTEN ÇÖZEN KISIM)
+                    # Sütun isimlerine bakmadan sırayla en kritik kolonları pozisyonuna göre eşleştiriyoruz
+                    yeni_df = pd.DataFrame()
+                    yeni_df['Tarih'] = df.iloc[:, 0]
+                    yeni_df['Hesap Kodu'] = df.iloc[:, 1]
+                    yeni_df['Açıklama'] = df.iloc[:, 2] if len(df.columns) > 2 else "Açıklama Eksik"
+                    yeni_df['Borç'] = df.iloc[:, -2] if len(df.columns) > 3 else 0
+                    yeni_df['Alacak'] = df.iloc[:, -1] if len(df.columns) > 4 else 0
+                    yeni_df['Evrak Tarihi'] = yeni_df['Tarih']
                     
-                    # 🚀 AKILLI VE ESNEK SÜTUN EŞLEŞTİRME MOTORU
-                    yeni_kolonlar = {}
-                    for col in df.columns:
-                        if "tarih" in col and "evrak" not in col: yeni_kolonlar[col] = "Tarih"
-                        elif "evrak" in col and "tarih" in col: yeni_kolonlar[col] = "Evrak Tarihi"
-                        elif "hesap" in col or "kod" in col: yeni_kolonlar[col] = "Hesap Kodu"
-                        elif "açıklama" in col or "aciklama" in col: yeni_kolonlar[col] = "Açıklama"
-                        elif "borç" in col or "borc" in col: yeni_kolonlar[col] = "Borç"
-                        elif "alacak" in col: yeni_kolonlar[col] = "Alacak"
-                    
-                    df.rename(columns=yeni_kolonlar, inplace=True)
-                    
-                    # Eğer sütunlar eksik kaldıysa Luca standart sıralamasına göre zorla oturt
-                    gerekli_cols = ["Tarih", "Hesap Kodu", "Açıklama", "Borç", "Alacak"]
-                    for gc in gerekli_cols:
-                        if gc not in df.columns:
-                            # Sütun adı tam uyuşmadıysa sırayla en olası kolonları zorla ata
-                            if gc == "Tarih" and len(df.columns) > 0: df.rename(columns={df.columns: "Tarih"}, inplace=True)
-                            if gc == "Hesap Kodu" and len(df.columns) > 1: df.rename(columns={df.columns: "Hesap Kodu"}, inplace=True)
-                            if gc == "Açıklama" and len(df.columns) > 2: df.rename(columns={df.columns: "Açıklama"}, inplace=True)
-                            if gc == "Borç" and len(df.columns) > 3: df.rename(columns={df.columns[-2]: "Borç"}, inplace=True)
-                            if gc == "Alacak" and len(df.columns) > 4: df.rename(columns={df.columns[-1]: "Alacak"}, inplace=True)
-
-                    if 'Evrak Tarihi' not in df.columns:
-                        df['Evrak Tarihi'] = df['Tarih']
+                    df = yeni_df
                     
                     for col in ['Borç', 'Alacak']:
-                        if col in df.columns:
-                            df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-                            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                        df[col] = df[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+                        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
                     
                     df['Tarih'] = pd.to_datetime(df['Tarih'], errors='coerce', dayfirst=True)
                     df = df.dropna(subset=['Tarih'])
@@ -198,9 +181,10 @@ else:
                         t_f = (df['Borç'] >= 7000) | (df['Alacak'] >= 7000)
                         kasa_ihlali = df[k_f & t_f]
                         if not kasa_ihlali.empty:
-                            strlm.dataframe(kasa_ihlali[['Tarih', 'Hesap Kodu Str', 'Açıklama', 'Borç', 'Alacak']], use_container_width=True)
+                            g_c = ['Tarih', 'Hesap Kodu Str', 'Açıklama', 'Borç', 'Alacak']
+                            strlm.dataframe(kasa_ihlali[g_c], use_container_width=True)
                         else:
-                            strlm.success("✅ Harika! Limit aşan usulsüz nakit kasa işlemi yok.")
+                            strlm.success("✅ Harika! Limit aşan nakit kasa işlemi yok.")
                             
                     with tab2:
                         strlm.subheader("📅 10 Günlük Yasal Fatura Kayıt Süresi İhlali")
@@ -208,7 +192,8 @@ else:
                         gecikmeli_faturalar = df[df['Gecikme_Gun'] > 10]
                         if not gecikmeli_faturalar.empty:
                             strlm.warning(f"⚠️ Toplam {len(gecikmeli_faturalar)} işlemde yasal süre aşılmış!")
-                            strlm.dataframe(gecikmeli_faturalar[['Tarih', 'Evrak Tarihi', 'Gecikme_Gun', 'Hesap Kodu Str', 'Açıklama', 'Borç']], use_container_width=True)
+                            g_cols = ['Tarih', 'Evrak Tarihi', 'Gecikme_Gun', 'Hesap Kodu Str', 'Açıklama', 'Borç']
+                            strlm.dataframe(gecikmeli_faturalar[g_cols], use_container_width=True)
                         else:
                             strlm.success("✅ Mükemmel! Tüm faturalar yasal 10 günlük süre içinde işlenmiş.")
                             
@@ -260,4 +245,3 @@ else:
                 strlm.error(f"Sistem güvenli modda çalıştırılamadı. Detay: {e}")
         else:
             strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
-
