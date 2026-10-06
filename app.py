@@ -143,7 +143,7 @@ else:
                         yeni_df['Evrak Tarihi'] = yeni_df['Tarih']
                         df = yeni_df
                     
-                    # 🚀 KESİN ÇÖZÜM: Tüm sütunları baştan string formatına zorluyoruz ve NaN değerleri engelliyoruz
+                    # 🚀 MUTLAK GÜVENLİK ADIMI: Hücreleri filtrelemeden önce zorla metne (string) çeviriyoruz
                     df['Açıklama'] = df['Açıklama'].fillna("Açıklama Belirtilmemiş").astype(str).str.strip()
                     df['Hesap Kodu'] = df['Hesap Kodu'].fillna("000").astype(str).str.strip()
                     df['Tarih'] = df['Tarih'].fillna("").astype(str).str.strip()
@@ -160,7 +160,7 @@ else:
                     df = df.dropna(subset=['Tarih'])
                     df['Evrak Tarihi'] = pd.to_datetime(df['Evrak Tarihi'], errors='coerce', dayfirst=True).fillna(df['Tarih'])
                     
-                    # Hesap kodlarını temiz metne dönüştür
+                    # Noktaları kaldırıp muavin hesap kırılımlarını 3 haneye indiriyoruz
                     df['Hesap Kodu Str'] = df['Hesap Kodu'].astype(str).str.replace('.', '', regex=False).str.replace(' ', '', regex=False).str.strip().str.slice(0, 3)
                     
                     strlm.success(f"📊 Otranto Finansal Yapay Zeka Denetim Motoru Aktif.")
@@ -291,10 +291,10 @@ else:
                         
                         strlm.markdown("---")
                         output = io.BytesIO()
-                        
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             df.head(1000).to_excel(writer, sheet_name='Otranto Rapor', index=False)
-                            strlm.download_button(
+                        
+                        strlm.download_button(
                             label="📥 Genişletilmiş Denetim Raporunu İndir (.xlsx)", 
                             data=output.getvalue(), 
                             file_name="Otranto_Uyum_Raporu.xlsx", 
@@ -304,3 +304,4 @@ else:
                 strlm.error(f"Sistem güvenli modda çalıştırılamadı. Detay: {e}")
         else:
             strlm.info("🔷 Otranto PDF/Excel hibrit motoru aktif. Luca Yevmiye Defterinizi yükleyin.")
+
